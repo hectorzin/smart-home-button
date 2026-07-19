@@ -10,9 +10,22 @@ packages:
   fridge_page: !include src/pages/fridge.yaml
   timer_page:  !include src/pages/timer.yaml
 
+substitutions:
+  # Remote packages cannot resolve !secret themselves. Set these from the
+  # consumer configuration (usually with !secret values in that local file).
+  device_name: m5stack-dialv1
+  device_friendly_name: M5Stack Dial
+  wifi_ssid: YOUR_WIFI_SSID
+  wifi_password: YOUR_WIFI_PASSWORD
+  ap_ssid: Dial Fallback Hotspot
+  ap_password: change-me-fallback-password
+  # Public dummy key for validation only. Always override before flashing.
+  api_encryption_key: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+  ota_password: change-me-ota-password
+
 esphome:
-  name: m5stack-dialv1
-  friendly_name: M5Stack Dial
+  name: ${device_name}
+  friendly_name: ${device_friendly_name}
   on_boot:
     - priority: 800
       then:
@@ -38,7 +51,7 @@ logger:
 
 api:
   encryption:
-    key: !secret api_encryption_key
+    key: ${api_encryption_key}
   on_client_connected:
     - if:
         condition:
@@ -56,14 +69,14 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    password: ${ota_password}
 
 wifi:
-  ssid: !secret wifi_ssid
-  password: !secret wifi_password
+  ssid: ${wifi_ssid}
+  password: ${wifi_password}
   ap:
-    ssid: !secret ap_ssid
-    password: !secret ap_password
+    ssid: ${ap_ssid}
+    password: ${ap_password}
 
 captive_portal:
 

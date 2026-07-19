@@ -9,7 +9,7 @@ substitutions:
 
 external_components:
   - source: ./components
-    components: [const, image, generic_image, media_source, sendspin]
+    components: [generic_image, media_source, sendspin]
     refresh: 0s
   
 

@@ -1,3 +1,2 @@
-# Tested with ESPHome 2026.3.3.
-# Newer versions may work, but pinning makes community reproduction easier.
-esphome==2026.3.3
+# Minimum tested ESPHome version for this package.
+esphome==2026.7.0
