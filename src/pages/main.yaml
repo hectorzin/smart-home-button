@@ -127,11 +127,6 @@ script:
             id(close_timer).execute();
             return;
           }
-          if (id(in_fridge)) {
-            id(in_fridge) = false;
-            id(open_menu).execute();
-            return;
-          }
           id(open_menu).execute();
 
 sensor:
@@ -181,11 +176,6 @@ sensor:
             - script.execute: menu_scroll_down
       - if:
           condition:
-            lambda: 'return id(in_fridge);'
-          then:
-            - script.execute: fridge_scroll_down
-      - if:
-          condition:
             lambda: 'return id(in_timer);'
           then:
             - script.execute: timer_encoder_up
@@ -224,11 +214,6 @@ sensor:
             lambda: 'return id(in_menu);'
           then:
             - script.execute: menu_scroll_up
-      - if:
-          condition:
-            lambda: 'return id(in_fridge);'
-          then:
-            - script.execute: fridge_scroll_up
       - if:
           condition:
             lambda: 'return id(in_timer);'

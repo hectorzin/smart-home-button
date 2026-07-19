@@ -29,7 +29,6 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 - Adjust an air conditioner entity from Home Assistant.
 - Show a music page with playback buttons, volume, progress, and album art.
 - Run a simple countdown timer.
-- Show a small fridge/food status page.
 - Keep the device alive on battery power on M5Dial V1.1 by enabling the power-hold pin.
 
 ## Gallery
@@ -37,7 +36,7 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 | | | | |
 | --- | --- | --- | --- |
 | <img src="docs/images/gallery/music-page.jpg" alt="Music page" width="240"> | <img src="docs/images/gallery/clock-weather-page.jpg" alt="Clock and weather page" width="240"> | <img src="docs/images/gallery/ac-page.jpg" alt="AC page" width="240"> | <img src="docs/images/gallery/timer-page.jpg" alt="Timer page" width="240"> |
-| <img src="docs/images/gallery/ac-power-page.jpg" alt="AC power control page" width="240"> | <img src="docs/images/gallery/light-page.jpg" alt="Light page" width="240"> | <img src="docs/images/gallery/fridge-page.jpg" alt="Fridge page" width="240"> | <img src="docs/images/gallery/menu-page.jpg" alt="Menu page" width="240"> |
+| <img src="docs/images/gallery/ac-power-page.jpg" alt="AC power control page" width="240"> | <img src="docs/images/gallery/light-page.jpg" alt="Light page" width="240"> | <img src="docs/images/gallery/menu-page.jpg" alt="Menu page" width="240"> | |
 
 ## Pages
 
@@ -48,7 +47,6 @@ The project is based on ESPHome and LVGL. Most of the UI is split into separate 
 | Light | LED ring brightness, color, and effects |
 | AC | Target temperature and power control; fan/swing UI can be mapped to your own climate services |
 | Music | SendSpin media state, cover art, progress, volume, and transport controls |
-| Fridge | Small food freshness/status cards |
 | Timer | Countdown timer with rotary adjustment |
 
 ## Hardware

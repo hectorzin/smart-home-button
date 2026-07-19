@@ -102,7 +102,7 @@ touchscreen:
           id(swipe_start_x) = -1;
           if (abs(dx) < 50 || abs(dy) > abs(dx)) return;
           bool on_clock = !id(in_menu) && !id(in_light) && !id(in_air)
-                       && !id(in_music) && !id(in_timer) && !id(in_fridge)
+                       && !id(in_music) && !id(in_timer)
                        && !id(in_colorpicker);
           if (on_clock && dx < 0) {
             id(open_menu).execute();

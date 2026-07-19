@@ -7,7 +7,6 @@ packages:
   light_page:  !include src/pages/light.yaml
   air_page:    !include src/pages/air.yaml
   music_page:  !include src/pages/music.yaml
-  fridge_page: !include src/pages/fridge.yaml
   timer_page:  !include src/pages/timer.yaml
 
 substitutions:
