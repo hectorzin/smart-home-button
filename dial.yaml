@@ -11,6 +11,7 @@ packages:
   timer_page:  !include src/pages/timer.yaml
 
 substitutions:
+  timezone: Europe/Madrid
   # Remote packages cannot resolve !secret themselves. Set these from the
   # consumer configuration (usually with !secret values in that local file).
   device_name: m5stack-dialv1

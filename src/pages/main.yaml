@@ -69,7 +69,7 @@ time:
     id: rtctime
     i2c_id: internal_i2c
     address: 0x51
-    timezone: Asia/Shanghai
+    timezone: ${timezone}
     update_interval: never
     on_time:
       - seconds: 0
@@ -97,7 +97,7 @@ time:
 
   - platform: homeassistant
     id: esptime
-    timezone: Asia/Shanghai
+    timezone: ${timezone}
     on_time_sync:
       then:
         - pcf8563.write_time:
