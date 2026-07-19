@@ -96,6 +96,9 @@ globals:
   - id: light_supports_rgb
     type: bool
     initial_value: 'false'
+  - id: light_supports_brightness
+    type: bool
+    initial_value: 'false'
 
 text_sensor:
   - platform: homeassistant
@@ -143,6 +146,14 @@ text_sensor:
     on_value:
       - lambda: |-
           id(light_supports_rgb) = x.find("rgb") != std::string::npos;
+          id(light_supports_brightness) =
+              id(light_supports_rgb) || x.find("brightness") != std::string::npos ||
+              x.find("color_temp") != std::string::npos || x.find("hs") != std::string::npos ||
+              x.find("xy") != std::string::npos;
+          ESP_LOGI("light_ha", "entity=%s supported_color_modes=%s brightness=%s rgb=%s",
+                   "${light_entity}", x.c_str(),
+                   id(light_supports_brightness) ? "yes" : "no",
+                   id(light_supports_rgb) ? "yes" : "no");
       - script.execute: refresh_light_arc
 
 sensor:
@@ -159,6 +170,61 @@ sensor:
       - script.execute: refresh_light_arc
 
 script:
+  - id: send_light_turn_on
+    then:
+      - if:
+          condition:
+            lambda: 'return id(light_supports_rgb);'
+          then:
+            - lambda: |-
+                ESP_LOGI("light_ha", "action=light.turn_on entity=%s brightness=%d rgb=[%d,%d,%d]",
+                         "${light_entity}", id(light_brightness), id(light_color_r),
+                         id(light_color_g), id(light_color_b));
+            - homeassistant.action:
+                action: light.turn_on
+                data:
+                  entity_id: ${light_entity}
+                data_template:
+                  brightness_pct: "{{ brightness | int }}"
+                  rgb_color: "[{{ red | int }}, {{ green | int }}, {{ blue | int }}]"
+                variables:
+                  brightness: !lambda "return id(light_brightness);"
+                  red: !lambda "return id(light_color_r);"
+                  green: !lambda "return id(light_color_g);"
+                  blue: !lambda "return id(light_color_b);"
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(light_supports_brightness);'
+                then:
+                  - lambda: |-
+                      ESP_LOGI("light_ha", "action=light.turn_on entity=%s brightness=%d",
+                               "${light_entity}", id(light_brightness));
+                  - homeassistant.action:
+                      action: light.turn_on
+                      data:
+                        entity_id: ${light_entity}
+                      data_template:
+                        brightness_pct: "{{ brightness | int }}"
+                      variables:
+                        brightness: !lambda "return id(light_brightness);"
+                else:
+                  - lambda: |-
+                      ESP_LOGI("light_ha", "action=light.turn_on entity=%s", "${light_entity}");
+                  - homeassistant.action:
+                      action: light.turn_on
+                      data:
+                        entity_id: ${light_entity}
+
+  - id: send_light_turn_off
+    then:
+      - lambda: |-
+          ESP_LOGI("light_ha", "action=light.turn_off entity=%s", "${light_entity}");
+      - homeassistant.action:
+          action: light.turn_off
+          data:
+            entity_id: ${light_entity}
+
   - id: open_light
     then:
       - globals.set: {id: in_light, value: 'true'}
@@ -187,32 +253,9 @@ script:
           condition:
             lambda: 'return id(light_on);'
           then:
-            - if:
-                condition:
-                  lambda: 'return id(light_supports_rgb);'
-                then:
-                  - homeassistant.action:
-                      action: light.turn_on
-                      data:
-                        entity_id: ${light_entity}
-                      data_template:
-                        brightness_pct: !lambda "return to_string(id(light_brightness));"
-                        rgb_color: !lambda |-
-                          char buf[20];
-                          snprintf(buf, sizeof(buf), "[%d, %d, %d]", id(light_color_r), id(light_color_g), id(light_color_b));
-                          return std::string(buf);
-                else:
-                  - homeassistant.action:
-                      action: light.turn_on
-                      data:
-                        entity_id: ${light_entity}
-                      data_template:
-                        brightness_pct: !lambda "return to_string(id(light_brightness));"
+            - script.execute: send_light_turn_on
           else:
-            - homeassistant.action:
-                action: light.turn_off
-                data:
-                  entity_id: ${light_entity}
+            - script.execute: send_light_turn_off
 
   - id: open_colorpicker
     then:
@@ -260,15 +303,7 @@ script:
           condition:
             lambda: 'return id(light_on) && id(light_supports_rgb);'
           then:
-            - homeassistant.action:
-                action: light.turn_on
-                data:
-                  entity_id: ${light_entity}
-                data_template:
-                  rgb_color: !lambda |-
-                    char buf[20];
-                    snprintf(buf, sizeof(buf), "[%d, %d, %d]", id(light_color_r), id(light_color_g), id(light_color_b));
-                    return std::string(buf);
+            - script.execute: send_light_turn_on
       - lvgl.page.show:
           id: page_light
           animation: MOVE_RIGHT
@@ -333,14 +368,9 @@ script:
       - script.execute: refresh_light_arc
       - if:
           condition:
-            lambda: 'return id(light_on);'
+            lambda: 'return id(light_on) && id(light_supports_brightness);'
           then:
-            - homeassistant.action:
-                action: light.turn_on
-                data:
-                  entity_id: ${light_entity}
-                data_template:
-                  brightness_pct: !lambda "return to_string(id(light_brightness));"
+            - script.execute: send_light_turn_on
 
   - id: light_brightness_down
     then:
@@ -351,14 +381,9 @@ script:
       - script.execute: refresh_light_arc
       - if:
           condition:
-            lambda: 'return id(light_on);'
+            lambda: 'return id(light_on) && id(light_supports_brightness);'
           then:
-            - homeassistant.action:
-                action: light.turn_on
-                data:
-                  entity_id: ${light_entity}
-                data_template:
-                  brightness_pct: !lambda "return to_string(id(light_brightness));"
+            - script.execute: send_light_turn_on
 
   - id: refresh_light_arc
     then:
@@ -384,6 +409,17 @@ script:
           lv_obj_set_style_text_color(id(lbl_light_title), tc, LV_STATE_DEFAULT);
           if (id(light_supports_rgb)) lv_obj_clear_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
           else lv_obj_add_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
+          if (id(light_supports_brightness)) {
+            lv_obj_clear_flag(id(light_arc), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(light_knob_dot), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(lbl_brightness_num), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(lbl_brightness_pct), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_obj_add_flag(id(light_arc), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(light_knob_dot), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(lbl_brightness_num), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(lbl_brightness_pct), LV_OBJ_FLAG_HIDDEN);
+          }
           // btn_dengguang: 根据light_on决定边框颜色
           if (id(light_on)) {
             lv_obj_set_style_border_color(id(btn_dengguang), tc, LV_STATE_DEFAULT);
