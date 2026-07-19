@@ -11,12 +11,6 @@ image:
     transparency: alpha_channel
     resize: 20x20
 
-  - file: src/assets/images/gradient.png
-    id: light_img_gradient
-    type: RGB565
-    transparency: alpha_channel
-    resize: 22x22
-
 font:
   - file:
       family: DM+Sans
@@ -99,9 +93,70 @@ globals:
   - id: light_color_b
     type: int
     initial_value: '255'
-  - id: light_gradient_mode
-    type: int
-    initial_value: '-1'
+  - id: light_supports_rgb
+    type: bool
+    initial_value: 'false'
+
+text_sensor:
+  - platform: homeassistant
+    id: ha_light_state
+    entity_id: ${light_entity}
+    internal: true
+    on_value:
+      - lambda: |-
+          id(light_on) = x == "on";
+      - script.execute: refresh_light_arc
+
+  - platform: homeassistant
+    id: ha_light_rgb_color
+    entity_id: ${light_entity}
+    attribute: rgb_color
+    internal: true
+    on_value:
+      - lambda: |-
+          int r, g, b;
+          if (sscanf(x.c_str(), "[%d, %d, %d]", &r, &g, &b) != 3) return;
+          id(light_color_r) = std::max(0, std::min(255, r));
+          id(light_color_g) = std::max(0, std::min(255, g));
+          id(light_color_b) = std::max(0, std::min(255, b));
+          float rf = id(light_color_r) / 255.0f;
+          float gf = id(light_color_g) / 255.0f;
+          float bf = id(light_color_b) / 255.0f;
+          float maxc = std::max(rf, std::max(gf, bf));
+          float minc = std::min(rf, std::min(gf, bf));
+          float delta = maxc - minc;
+          float hue = 0.0f;
+          if (delta > 0.0001f) {
+            if (maxc == rf) hue = 60.0f * fmodf((gf - bf) / delta, 6.0f);
+            else if (maxc == gf) hue = 60.0f * (((bf - rf) / delta) + 2.0f);
+            else hue = 60.0f * (((rf - gf) / delta) + 4.0f);
+          }
+          if (hue < 0.0f) hue += 360.0f;
+          id(light_color_h) = (int)(hue + 0.5f) % 360;
+      - script.execute: refresh_light_arc
+
+  - platform: homeassistant
+    id: ha_light_color_modes
+    entity_id: ${light_entity}
+    attribute: supported_color_modes
+    internal: true
+    on_value:
+      - lambda: |-
+          id(light_supports_rgb) = x.find("rgb") != std::string::npos;
+      - script.execute: refresh_light_arc
+
+sensor:
+  - platform: homeassistant
+    id: ha_light_brightness
+    entity_id: ${light_entity}
+    attribute: brightness
+    internal: true
+    on_value:
+      - lambda: |-
+          if (x != x) return;
+          int brightness = (int)(x * 100.0f / 255.0f + 0.5f);
+          id(light_brightness) = std::max(0, std::min(100, brightness));
+      - script.execute: refresh_light_arc
 
 script:
   - id: open_light
@@ -132,20 +187,37 @@ script:
           condition:
             lambda: 'return id(light_on);'
           then:
-            - light.turn_on:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
-                red: !lambda "return id(light_color_r) / 255.0f;"
-                green: !lambda "return id(light_color_g) / 255.0f;"
-                blue: !lambda "return id(light_color_b) / 255.0f;"
+            - if:
+                condition:
+                  lambda: 'return id(light_supports_rgb);'
+                then:
+                  - homeassistant.action:
+                      action: light.turn_on
+                      data:
+                        entity_id: ${light_entity}
+                      data_template:
+                        brightness_pct: !lambda "return to_string(id(light_brightness));"
+                        rgb_color: !lambda |-
+                          char buf[20];
+                          snprintf(buf, sizeof(buf), "[%d, %d, %d]", id(light_color_r), id(light_color_g), id(light_color_b));
+                          return std::string(buf);
+                else:
+                  - homeassistant.action:
+                      action: light.turn_on
+                      data:
+                        entity_id: ${light_entity}
+                      data_template:
+                        brightness_pct: !lambda "return to_string(id(light_brightness));"
           else:
-            - light.turn_off: led_strip
+            - homeassistant.action:
+                action: light.turn_off
+                data:
+                  entity_id: ${light_entity}
 
   - id: open_colorpicker
     then:
       - lambda: |-
           id(light_color_h_prev) = id(light_color_h);
-          id(light_gradient_mode) = -1;
       - globals.set: {id: in_light, value: 'false'}
       - globals.set: {id: in_colorpicker, value: 'true'}
       - lvgl.page.show:
@@ -181,19 +253,22 @@ script:
           id(light_color_r) = r8;
           id(light_color_g) = g8;
           id(light_color_b) = b8;
-            id(light_gradient_mode) = -1;
       - globals.set: {id: in_colorpicker, value: 'false'}
       - globals.set: {id: in_light, value: 'true'}
       - script.execute: refresh_light_arc
       - if:
           condition:
-            lambda: 'return id(light_on);'
+            lambda: 'return id(light_on) && id(light_supports_rgb);'
           then:
-            - light.control:
-                id: led_strip
-                red: !lambda "return id(light_color_r) / 255.0f;"
-                green: !lambda "return id(light_color_g) / 255.0f;"
-                blue: !lambda "return id(light_color_b) / 255.0f;"
+            - homeassistant.action:
+                action: light.turn_on
+                data:
+                  entity_id: ${light_entity}
+                data_template:
+                  rgb_color: !lambda |-
+                    char buf[20];
+                    snprintf(buf, sizeof(buf), "[%d, %d, %d]", id(light_color_r), id(light_color_g), id(light_color_b));
+                    return std::string(buf);
       - lvgl.page.show:
           id: page_light
           animation: MOVE_RIGHT
@@ -260,9 +335,12 @@ script:
           condition:
             lambda: 'return id(light_on);'
           then:
-            - light.control:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
+            - homeassistant.action:
+                action: light.turn_on
+                data:
+                  entity_id: ${light_entity}
+                data_template:
+                  brightness_pct: !lambda "return to_string(id(light_brightness));"
 
   - id: light_brightness_down
     then:
@@ -275,9 +353,12 @@ script:
           condition:
             lambda: 'return id(light_on);'
           then:
-            - light.control:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
+            - homeassistant.action:
+                action: light.turn_on
+                data:
+                  entity_id: ${light_entity}
+                data_template:
+                  brightness_pct: !lambda "return to_string(id(light_brightness));"
 
   - id: refresh_light_arc
     then:
@@ -301,14 +382,8 @@ script:
           lv_obj_set_style_border_color(id(btn_palette), tc, LV_STATE_DEFAULT);
           lv_obj_set_style_shadow_color(id(btn_palette), tc, LV_STATE_DEFAULT);
           lv_obj_set_style_text_color(id(lbl_light_title), tc, LV_STATE_DEFAULT);
-          // btn_rainbow: 根据gradient_mode决定边框颜色
-          if (id(light_gradient_mode) >= 0) {
-            lv_obj_set_style_border_color(id(btn_rainbow), tc, LV_STATE_DEFAULT);
-            lv_obj_set_style_shadow_color(id(btn_rainbow), tc, LV_STATE_DEFAULT);
-          } else {
-            lv_obj_set_style_border_color(id(btn_rainbow), lv_color_hex(0x262626), LV_STATE_DEFAULT);
-            lv_obj_set_style_shadow_color(id(btn_rainbow), lv_color_hex(0x262626), LV_STATE_DEFAULT);
-          }
+          if (id(light_supports_rgb)) lv_obj_clear_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
           // btn_dengguang: 根据light_on决定边框颜色
           if (id(light_on)) {
             lv_obj_set_style_border_color(id(btn_dengguang), tc, LV_STATE_DEFAULT);
@@ -320,61 +395,6 @@ script:
       - lvgl.arc.update:
           id: light_arc
           value: !lambda "return id(light_brightness);"
-
-  - id: cycle_gradient_effect
-    then:
-      - lambda: |-
-          id(light_gradient_mode) = (id(light_gradient_mode) + 1) % 6;
-          id(light_on) = true;
-      - script.execute: refresh_light_arc
-      - if:
-          condition:
-            lambda: 'return id(light_gradient_mode) == 0;'
-          then:
-            - light.turn_on:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
-                effect: "Atmosphere Flow Aurora"
-      - if:
-          condition:
-            lambda: 'return id(light_gradient_mode) == 1;'
-          then:
-            - light.turn_on:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
-                effect: "Atmosphere Flow Sunset"
-      - if:
-          condition:
-            lambda: 'return id(light_gradient_mode) == 2;'
-          then:
-            - light.turn_on:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
-                effect: "Atmosphere Flow Ocean"
-      - if:
-          condition:
-            lambda: 'return id(light_gradient_mode) == 3;'
-          then:
-            - light.turn_on:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
-                effect: "Atmosphere Flow Neon"
-      - if:
-          condition:
-            lambda: 'return id(light_gradient_mode) == 4;'
-          then:
-            - light.turn_on:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
-                effect: "Atmosphere Flow Forest"
-      - if:
-          condition:
-            lambda: 'return id(light_gradient_mode) == 5;'
-          then:
-            - light.turn_on:
-                id: led_strip
-                brightness: !lambda "return id(light_brightness) / 100.0f;"
-                effect: "Atmosphere Flow Ice"
 
 lvgl:
   pages:
@@ -506,34 +526,8 @@ lvgl:
                         clickable: false
 
               - obj:
-                  id: btn_rainbow
-                  x: 102
-                  y: 177
-                  width: 36
-                  height: 36
-                  radius: 18
-                  bg_color: col_light_bg
-                  bg_opa: COVER
-                  border_width: 2
-                  border_color: col_light_icon_bg
-                  border_opa: COVER
-                  shadow_width: 8
-                  shadow_color: col_light_icon_bg
-                  shadow_opa: 25%
-                  shadow_spread: 0
-                  clickable: true
-                  scrollbar_mode: "OFF"
-                  scroll_dir: NONE
-                  on_click:
-                    - script.execute: cycle_gradient_effect
-                  widgets:
-                    - image:
-                        src: light_img_gradient
-                        align: CENTER
-                        clickable: false
-              - obj:
                   id: btn_dengguang
-                  x: 143
+                  x: 123
                   y: 177
                   width: 36
                   height: 36
