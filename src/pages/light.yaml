@@ -99,6 +99,21 @@ globals:
   - id: light_supports_brightness
     type: bool
     initial_value: 'false'
+  - id: light_user_adjusting
+    type: bool
+    initial_value: 'false'
+  - id: light_last_ha_brightness
+    type: int
+    initial_value: '-1'
+  - id: light_requested_brightness
+    type: int
+    initial_value: '75'
+  - id: light_brightness_action_sent
+    type: bool
+    initial_value: 'false'
+  - id: light_ha_brightness_received_after_send
+    type: bool
+    initial_value: 'false'
 
 text_sensor:
   - platform: homeassistant
@@ -166,8 +181,24 @@ sensor:
       - lambda: |-
           if (x != x) return;
           int brightness = (int)(x * 100.0f / 255.0f + 0.5f);
-          id(light_brightness) = std::max(0, std::min(100, brightness));
-      - script.execute: refresh_light_arc
+          id(light_last_ha_brightness) = std::max(0, std::min(100, brightness));
+          if (id(light_user_adjusting)) {
+            if (id(light_brightness_action_sent)) {
+              id(light_ha_brightness_received_after_send) = true;
+              ESP_LOGI("light_ha", "stored HA brightness=%d after local send",
+                       id(light_last_ha_brightness));
+            } else {
+              ESP_LOGI("light_ha", "ignored pre-send HA brightness=%d while local adjustment is active",
+                       id(light_last_ha_brightness));
+            }
+            return;
+          }
+          id(light_brightness) = id(light_last_ha_brightness);
+      - if:
+          condition:
+            lambda: 'return !id(light_user_adjusting);'
+          then:
+            - script.execute: refresh_light_arc
 
 script:
   - id: send_light_turn_on
@@ -224,6 +255,39 @@ script:
           action: light.turn_off
           data:
             entity_id: ${light_entity}
+
+  - id: queue_light_brightness
+    mode: restart
+    then:
+      - delay: 200ms
+      - if:
+          condition:
+            lambda: 'return id(light_on) && id(light_supports_brightness);'
+          then:
+            - lambda: |-
+                id(light_brightness_action_sent) = true;
+                ESP_LOGI("light_ha", "sending coalesced brightness=%d to entity=%s",
+                         id(light_brightness), "${light_entity}");
+            - script.execute: send_light_turn_on
+      - delay: 600ms
+      - lambda: |-
+          id(light_user_adjusting) = false;
+          int requested = id(light_requested_brightness);
+          int received = id(light_last_ha_brightness);
+          bool confirmed = id(light_ha_brightness_received_after_send) &&
+                           received >= 0 && abs(received - requested) <= 2;
+          if (confirmed) {
+            id(light_brightness) = received;
+            ESP_LOGI("light_ha", "reconciled brightness=%d from Home Assistant (requested=%d)",
+                     id(light_brightness), requested);
+          } else {
+            id(light_brightness) = requested;
+            ESP_LOGI("light_ha", "kept requested brightness=%d; HA value=%d was not a matching confirmation",
+                     requested, received);
+          }
+          id(light_brightness_action_sent) = false;
+          id(light_ha_brightness_received_after_send) = false;
+      - script.execute: refresh_light_arc
 
   - id: open_light
     then:
@@ -365,12 +429,14 @@ script:
           int v = id(light_brightness) + 1;
           if (v > 100) v = 100;
           id(light_brightness) = v;
+          id(light_requested_brightness) = v;
+          id(light_brightness_action_sent) = false;
+          id(light_ha_brightness_received_after_send) = false;
+          id(light_user_adjusting) = true;
+          ESP_LOGI("light_ha", "local brightness requested=%d for entity=%s",
+                   id(light_brightness), "${light_entity}");
       - script.execute: refresh_light_arc
-      - if:
-          condition:
-            lambda: 'return id(light_on) && id(light_supports_brightness);'
-          then:
-            - script.execute: send_light_turn_on
+      - script.execute: queue_light_brightness
 
   - id: light_brightness_down
     then:
@@ -378,12 +444,14 @@ script:
           int v = id(light_brightness) - 1;
           if (v < 0) v = 0;
           id(light_brightness) = v;
+          id(light_requested_brightness) = v;
+          id(light_brightness_action_sent) = false;
+          id(light_ha_brightness_received_after_send) = false;
+          id(light_user_adjusting) = true;
+          ESP_LOGI("light_ha", "local brightness requested=%d for entity=%s",
+                   id(light_brightness), "${light_entity}");
       - script.execute: refresh_light_arc
-      - if:
-          condition:
-            lambda: 'return id(light_on) && id(light_supports_brightness);'
-          then:
-            - script.execute: send_light_turn_on
+      - script.execute: queue_light_brightness
 
   - id: refresh_light_arc
     then:
