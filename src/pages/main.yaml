@@ -317,7 +317,7 @@ binary_sensor:
                 - delay: 250ms
                 - globals.set: {id: button_debounce, value: 'false'}
       - timing:
-          - ON for at most 420ms
+          - ON for 50ms to 500ms
           - OFF for at least 520ms
         invalid_cooldown: 150ms
         then:
