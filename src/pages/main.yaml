@@ -150,7 +150,7 @@ sensor:
           then:
             - lambda: |-
                 id(dial_lights_id).select_next();
-                id(animate_light_selector).execute();
+                id(refresh_light_selector).execute();
       - if:
           condition:
             lambda: 'return id(in_colorpicker);'
@@ -197,7 +197,7 @@ sensor:
           then:
             - lambda: |-
                 id(dial_lights_id).select_previous();
-                id(animate_light_selector).execute();
+                id(refresh_light_selector).execute();
       - if:
           condition:
             lambda: 'return id(in_colorpicker);'
