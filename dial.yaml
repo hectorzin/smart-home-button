@@ -11,7 +11,7 @@ packages:
   timer_page:  !include src/pages/timer.yaml
 
 external_components:
-  - source: ./components
+  - source: github://hectorzin/smart-home-button@rebuild-multilight
     components: [dial_lights]
     refresh: 0s
 
