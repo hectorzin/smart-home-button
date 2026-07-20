@@ -22,6 +22,21 @@ script:
             const size_t active = id(dial_lights_id).active_index();
             return id(dial_lights_id).name_at((active + 1) % count).c_str();
 
+  - id: animate_light_selector
+    then:
+      - script.execute: refresh_light_selector
+      - lambda: |-
+          static lv_anim_t animation;
+          lv_anim_init(&animation);
+          lv_anim_set_var(&animation, id(light_selector_stack));
+          lv_anim_set_values(&animation, 14, 0);
+          lv_anim_set_time(&animation, 200);
+          lv_anim_set_path_cb(&animation, lv_anim_path_ease_in_out);
+          lv_anim_set_exec_cb(&animation, [](void *obj, int32_t y) {
+            lv_obj_set_y(static_cast<lv_obj_t *>(obj), y);
+          });
+          lv_anim_start(&animation);
+
   - id: open_light_selector
     then:
       - globals.set: {id: in_light_selector, value: 'true'}
@@ -47,7 +62,7 @@ script:
 lvgl:
   pages:
     - id: page_light_selector
-      bg_color: col_light_bg
+      bg_color: col_menu_bg
       bg_opa: COVER
       scrollbar_mode: "OFF"
       on_load:
@@ -55,37 +70,97 @@ lvgl:
       widgets:
         - obj:
             align: CENTER
-            width: 236
-            height: 236
-            radius: 118
-            bg_color: col_light_bg
-            bg_opa: COVER
-            border_width: 2
-            border_color: col_light_track
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
+            bg_color: col_menu_bg
+            border_width: 0
+            pad_all: 0
+            scrollbar_mode: "OFF"
             widgets:
-              - label:
-                  id: lbl_light_selector_previous
-                  align: TOP_MID
-                  y: 36
-                  text: ""
-                  text_font: font_menu_item
-                  text_color: col_text_sec
-              - label:
-                  id: lbl_light_selector_current
-                  align: CENTER
-                  text: ""
-                  text_font: font_menu_center
-                  text_color: col_text_pri
-              - label:
-                  id: lbl_light_selector_next
-                  align: BOTTOM_MID
-                  y: -36
-                  text: ""
-                  text_font: font_menu_item
-                  text_color: col_text_sec
-              - label:
-                  align: BOTTOM_MID
-                  y: -12
-                  text: "Gira para elegir"
-                  text_font: font_lbl_s
-                  text_color: col_text_sec
+              - obj:
+                  id: light_selector_stack
+                  align: TOP_LEFT
+                  x: 0
+                  y: 0
+                  width: 240
+                  height: 240
+                  bg_opa: TRANSP
+                  border_width: 0
+                  pad_all: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+                  widgets:
+                    - obj:
+                        align: TOP_MID
+                        y: 52
+                        width: 168
+                        height: 40
+                        bg_opa: TRANSP
+                        border_width: 0
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - label:
+                              id: lbl_light_selector_previous
+                              align: CENTER
+                              width: 156
+                              text_align: CENTER
+                              long_mode: DOT
+                              text: ""
+                              text_font: font_menu_item
+                              text_color: col_menu_dim
+                              text_opa: 50%
+                    - obj:
+                        align: TOP_MID
+                        y: 108
+                        x: -96
+                        width: 6
+                        height: 32
+                        radius: 3
+                        bg_color: col_menu_accent
+                        bg_opa: COVER
+                        border_width: 0
+                        clickable: false
+                    - obj:
+                        align: TOP_MID
+                        y: 102
+                        width: 168
+                        height: 56
+                        radius: 20
+                        bg_color: col_menu_pill
+                        bg_opa: COVER
+                        border_width: 0
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - label:
+                              id: lbl_light_selector_current
+                              align: CENTER
+                              width: 146
+                              text_align: CENTER
+                              long_mode: DOT
+                              text: ""
+                              text_font: font_menu_center
+                              text_color: col_text_pri
+                    - obj:
+                        align: TOP_MID
+                        y: 168
+                        width: 168
+                        height: 40
+                        bg_opa: TRANSP
+                        border_width: 0
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - label:
+                              id: lbl_light_selector_next
+                              align: CENTER
+                              width: 156
+                              text_align: CENTER
+                              long_mode: DOT
+                              text: ""
+                              text_font: font_menu_item
+                              text_color: col_menu_dim
+                              text_opa: 50%
