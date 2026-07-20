@@ -586,7 +586,7 @@ lvgl:
               - obj:
                   x: 81
                   y: 143
-                  width: 78
+                  width: 116
                   height: 22
                   radius: 15
                   bg_color: col_light_label_bg
@@ -599,7 +599,7 @@ lvgl:
                         id: lbl_light_title
                         align: CENTER
                         text: "LIGHT"
-                        text_font: font_light_label
+                        text_font: font_menu_item
                         text_color: col_light_label_text
 
               - obj:

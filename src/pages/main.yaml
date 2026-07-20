@@ -114,7 +114,16 @@ script:
             id(close_menu).execute();
             return;
           }
-          if (id(in_light) || id(in_colorpicker)) {
+          if (id(in_light)) {
+            if (id(dial_lights_id).light_count() > 1) {
+              id(in_light) = false;
+              id(open_light_selector).execute();
+            } else {
+              id(close_light).execute();
+            }
+            return;
+          }
+          if (id(in_colorpicker)) {
             id(close_light).execute();
             return;
           }

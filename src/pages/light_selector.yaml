@@ -43,6 +43,15 @@ script:
           ESP_LOGI("light_selector", "selected index=%u name=%s entity_id=%s",
                    static_cast<unsigned>(id(dial_lights_id).active_index()), id(dial_lights_id).active_name().c_str(),
                    id(dial_lights_id).active_entity_id().c_str());
+      - script.execute: open_selected_light
+
+  - id: open_selected_light
+    then:
+      - globals.set: {id: in_light_selector, value: 'false'}
+      - lvgl.label.update:
+          id: lbl_light_title
+          text: !lambda 'return id(dial_lights_id).active_name().c_str();'
+      - script.execute: open_light
 
 lvgl:
   pages:
