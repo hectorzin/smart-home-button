@@ -26,6 +26,7 @@ script:
     then:
       - globals.set: {id: in_light_selector, value: 'true'}
       - globals.set: {id: in_menu, value: 'false'}
+      - globals.set: {id: in_light, value: 'false'}
       - script.execute: refresh_light_selector
       - lvgl.page.show:
           id: page_light_selector
