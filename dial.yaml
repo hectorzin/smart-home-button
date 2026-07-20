@@ -5,9 +5,23 @@ packages:
   clock_page:  !include src/pages/main.yaml
   menu_page:   !include src/pages/menu.yaml
   light_page:  !include src/pages/light.yaml
+  light_selector_page: !include src/pages/light_selector.yaml
   air_page:    !include src/pages/air.yaml
   music_page:  !include src/pages/music.yaml
   timer_page:  !include src/pages/timer.yaml
+
+external_components:
+  - source: ./components
+    components: [dial_lights]
+    refresh: 0s
+
+dial_lights:
+  - entity_id: light.sofa
+    name: Sofá
+  - entity_id: light.mesa
+    name: Mesa
+  - entity_id: light.luces_jardin
+    name: Jardín
 
 substitutions:
   timezone: Europe/Madrid

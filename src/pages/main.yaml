@@ -106,6 +106,10 @@ script:
   - id: dial_back
     then:
       - lambda: |-
+          if (id(in_light_selector)) {
+            id(close_light_selector).execute();
+            return;
+          }
           if (id(in_menu)) {
             id(close_menu).execute();
             return;
@@ -140,6 +144,13 @@ sensor:
       mode: INPUT_PULLUP
     resolution: 4
     on_clockwise:
+      - if:
+          condition:
+            lambda: 'return id(in_light_selector);'
+          then:
+            - lambda: |-
+                id(dial_lights_id).select_next();
+                id(refresh_light_selector).execute();
       - if:
           condition:
             lambda: 'return id(in_colorpicker);'
@@ -180,6 +191,13 @@ sensor:
           then:
             - script.execute: timer_encoder_up
     on_anticlockwise:
+      - if:
+          condition:
+            lambda: 'return id(in_light_selector);'
+          then:
+            - lambda: |-
+                id(dial_lights_id).select_previous();
+                id(refresh_light_selector).execute();
       - if:
           condition:
             lambda: 'return id(in_colorpicker);'
@@ -327,6 +345,14 @@ binary_sensor:
               then:
                 - globals.set: {id: button_debounce, value: 'true'}
                 - script.execute: menu_confirm
+                - delay: 250ms
+                - globals.set: {id: button_debounce, value: 'false'}
+          - if:
+              condition:
+                lambda: 'return id(in_light_selector) && !id(button_debounce);'
+              then:
+                - globals.set: {id: button_debounce, value: 'true'}
+                - script.execute: light_selector_confirm
                 - delay: 250ms
                 - globals.set: {id: button_debounce, value: 'false'}
           - if:

@@ -323,7 +323,13 @@ script:
           ESP_LOGI("menu", "selected item %d", id(menu_sel));
           int sel = id(menu_sel);
           if      (sel == 0) { id(open_timer).execute(); }
-          else if (sel == 1) { id(open_light).execute(); }
+          else if (sel == 1) {
+            if (id(dial_lights_id).light_count() == 0) {
+              ESP_LOGW("menu", "Lights selected but dial_lights is empty");
+            } else {
+              id(open_light_selector).execute();
+            }
+          }
           else if (sel == 2) { id(open_air).execute(); }
           else if (sel == 3) { id(open_music).execute(); }
           else if (sel == 4) { id(close_menu).execute(); }

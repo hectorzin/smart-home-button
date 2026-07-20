@@ -1,0 +1,91 @@
+globals:
+  - id: in_light_selector
+    type: bool
+    initial_value: 'false'
+
+script:
+  - id: refresh_light_selector
+    then:
+      - lvgl.label.update:
+          id: lbl_light_selector_previous
+          text: !lambda |-
+            const size_t count = id(dial_lights_id).light_count();
+            const size_t active = id(dial_lights_id).active_index();
+            return id(dial_lights_id).name_at((active + count - 1) % count).c_str();
+      - lvgl.label.update:
+          id: lbl_light_selector_current
+          text: !lambda 'return id(dial_lights_id).active_name().c_str();'
+      - lvgl.label.update:
+          id: lbl_light_selector_next
+          text: !lambda |-
+            const size_t count = id(dial_lights_id).light_count();
+            const size_t active = id(dial_lights_id).active_index();
+            return id(dial_lights_id).name_at((active + 1) % count).c_str();
+
+  - id: open_light_selector
+    then:
+      - globals.set: {id: in_light_selector, value: 'true'}
+      - globals.set: {id: in_menu, value: 'false'}
+      - script.execute: refresh_light_selector
+      - lvgl.page.show:
+          id: page_light_selector
+          animation: MOVE_LEFT
+
+  - id: close_light_selector
+    then:
+      - globals.set: {id: in_light_selector, value: 'false'}
+      - script.execute: open_menu
+
+  - id: light_selector_confirm
+    then:
+      - lambda: |-
+          id(dial_lights_id).select_light(id(dial_lights_id).active_index());
+          ESP_LOGI("light_selector", "selected index=%u name=%s entity_id=%s",
+                   static_cast<unsigned>(id(dial_lights_id).active_index()), id(dial_lights_id).active_name().c_str(),
+                   id(dial_lights_id).active_entity_id().c_str());
+
+lvgl:
+  pages:
+    - id: page_light_selector
+      bg_color: col_light_bg
+      bg_opa: COVER
+      scrollbar_mode: "OFF"
+      on_load:
+        - script.execute: refresh_light_selector
+      widgets:
+        - obj:
+            align: CENTER
+            width: 236
+            height: 236
+            radius: 118
+            bg_color: col_light_bg
+            bg_opa: COVER
+            border_width: 2
+            border_color: col_light_track
+            widgets:
+              - label:
+                  id: lbl_light_selector_previous
+                  align: TOP_MID
+                  y: 36
+                  text: ""
+                  text_font: font_light_label
+                  text_color: col_text_sec
+              - label:
+                  id: lbl_light_selector_current
+                  align: CENTER
+                  text: ""
+                  text_font: font_light_label
+                  text_color: col_text_pri
+              - label:
+                  id: lbl_light_selector_next
+                  align: BOTTOM_MID
+                  y: -36
+                  text: ""
+                  text_font: font_light_label
+                  text_color: col_text_sec
+              - label:
+                  align: BOTTOM_MID
+                  y: -12
+                  text: "Gira para elegir"
+                  text_font: font_lbl_s
+                  text_color: col_text_sec
