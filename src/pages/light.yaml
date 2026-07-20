@@ -213,12 +213,13 @@ script:
                          id(light_color_g), id(light_color_b));
             - homeassistant.action:
                 action: light.turn_on
-                data:
-                  entity_id: ${light_entity}
                 data_template:
+                  entity_id: "{{ target_entity }}"
                   brightness_pct: "{{ brightness | int }}"
                   rgb_color: "[{{ red | int }}, {{ green | int }}, {{ blue | int }}]"
                 variables:
+                  target_entity: !lambda |-
+                    return id(dial_lights_id).active_entity_id();
                   brightness: !lambda "return id(light_brightness);"
                   red: !lambda "return id(light_color_r);"
                   green: !lambda "return id(light_color_g);"
@@ -233,19 +234,23 @@ script:
                                "${light_entity}", id(light_brightness));
                   - homeassistant.action:
                       action: light.turn_on
-                      data:
-                        entity_id: ${light_entity}
                       data_template:
+                        entity_id: "{{ target_entity }}"
                         brightness_pct: "{{ brightness | int }}"
                       variables:
+                        target_entity: !lambda |-
+                          return id(dial_lights_id).active_entity_id();
                         brightness: !lambda "return id(light_brightness);"
                 else:
                   - lambda: |-
                       ESP_LOGI("light_ha", "action=light.turn_on entity=%s", "${light_entity}");
                   - homeassistant.action:
                       action: light.turn_on
-                      data:
-                        entity_id: ${light_entity}
+                      data_template:
+                        entity_id: "{{ target_entity }}"
+                      variables:
+                        target_entity: !lambda |-
+                          return id(dial_lights_id).active_entity_id();
 
   - id: send_light_turn_off
     then:
@@ -253,8 +258,11 @@ script:
           ESP_LOGI("light_ha", "action=light.turn_off entity=%s", "${light_entity}");
       - homeassistant.action:
           action: light.turn_off
-          data:
-            entity_id: ${light_entity}
+          data_template:
+            entity_id: "{{ target_entity }}"
+          variables:
+            target_entity: !lambda |-
+              return id(dial_lights_id).active_entity_id();
 
   - id: queue_light_brightness
     mode: restart
