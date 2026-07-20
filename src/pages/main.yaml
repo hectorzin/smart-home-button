@@ -158,8 +158,20 @@ sensor:
             lambda: 'return id(in_light_selector);'
           then:
             - lambda: |-
+                const int raw = static_cast<int>(id(encoder).state);
+                const int before = id(light_selector_encoder_accum);
+                const int after = before + 1;
+                id(light_selector_encoder_accum) = after;
+                if (after < 4) {
+                  ESP_LOGI("light_selector", "encoder raw=%d delta=+1 accum=%d->%d action=discarded",
+                           raw, before, after);
+                  return;
+                }
+                id(light_selector_encoder_accum) = 0;
                 id(dial_lights_id).select_next();
                 id(refresh_light_selector).execute();
+                ESP_LOGI("light_selector", "encoder raw=%d delta=+1 accum=%d->0 action=select_next",
+                         raw, before);
           else:
             - if:
                 condition:
@@ -208,8 +220,20 @@ sensor:
             lambda: 'return id(in_light_selector);'
           then:
             - lambda: |-
+                const int raw = static_cast<int>(id(encoder).state);
+                const int before = id(light_selector_encoder_accum);
+                const int after = before - 1;
+                id(light_selector_encoder_accum) = after;
+                if (after > -4) {
+                  ESP_LOGI("light_selector", "encoder raw=%d delta=-1 accum=%d->%d action=discarded",
+                           raw, before, after);
+                  return;
+                }
+                id(light_selector_encoder_accum) = 0;
                 id(dial_lights_id).select_previous();
                 id(refresh_light_selector).execute();
+                ESP_LOGI("light_selector", "encoder raw=%d delta=-1 accum=%d->0 action=select_previous",
+                         raw, before);
           else:
             - if:
                 condition:

@@ -2,6 +2,9 @@ globals:
   - id: in_light_selector
     type: bool
     initial_value: 'false'
+  - id: light_selector_encoder_accum
+    type: int
+    initial_value: '0'
 
 script:
   - id: refresh_light_selector
@@ -27,6 +30,7 @@ script:
       - globals.set: {id: in_light_selector, value: 'true'}
       - globals.set: {id: in_menu, value: 'false'}
       - globals.set: {id: in_light, value: 'false'}
+      - globals.set: {id: light_selector_encoder_accum, value: '0'}
       - script.execute: refresh_light_selector
       - lvgl.page.show:
           id: page_light_selector
@@ -35,6 +39,7 @@ script:
   - id: close_light_selector
     then:
       - globals.set: {id: in_light_selector, value: 'false'}
+      - globals.set: {id: light_selector_encoder_accum, value: '0'}
       - script.execute: open_menu
 
   - id: light_selector_confirm
