@@ -68,20 +68,20 @@ lvgl:
                   align: TOP_MID
                   y: 36
                   text: ""
-                  text_font: font_light_label
+                  text_font: font_menu_item
                   text_color: col_text_sec
               - label:
                   id: lbl_light_selector_current
                   align: CENTER
                   text: ""
-                  text_font: font_light_label
+                  text_font: font_menu_center
                   text_color: col_text_pri
               - label:
                   id: lbl_light_selector_next
                   align: BOTTOM_MID
                   y: -36
                   text: ""
-                  text_font: font_light_label
+                  text_font: font_menu_item
                   text_color: col_text_sec
               - label:
                   align: BOTTOM_MID
