@@ -317,24 +317,6 @@ script:
           id(light_ha_brightness_received_after_send) = false;
       - script.execute: refresh_light_arc
 
-  - id: reset_selected_light_visual_state
-    then:
-      - lambda: |-
-          id(light_on) = false;
-          id(light_brightness) = 75;
-          id(light_supports_brightness) = false;
-          id(light_supports_rgb) = false;
-          id(light_color_r) = 169;
-          id(light_color_g) = 143;
-          id(light_color_b) = 255;
-          id(light_color_h) = 252;
-          id(light_color_h_prev) = 252;
-          id(light_user_adjusting) = false;
-          id(light_last_ha_brightness) = -1;
-          id(light_requested_brightness) = 75;
-          id(light_brightness_action_sent) = false;
-          id(light_ha_brightness_received_after_send) = false;
-
   - id: open_light
     then:
       - globals.set: {id: in_light, value: 'true'}

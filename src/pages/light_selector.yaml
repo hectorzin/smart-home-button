@@ -60,13 +60,29 @@ script:
           text: !lambda 'return id(dial_lights_id).active_name().c_str();'
       - lambda: |-
           id(light_multilight_active) = true;
-      - script.execute: reset_selected_light_visual_state
-      - lambda: |-
+
+          id(light_on) = false;
+          id(light_brightness) = 75;
+          id(light_supports_brightness) = false;
+          id(light_supports_rgb) = false;
+          id(light_color_r) = 169;
+          id(light_color_g) = 143;
+          id(light_color_b) = 255;
+          id(light_color_h) = 252;
+          id(light_color_h_prev) = 252;
+          id(light_user_adjusting) = false;
+          id(light_last_ha_brightness) = -1;
+          id(light_requested_brightness) = 75;
+          id(light_brightness_action_sent) = false;
+          id(light_ha_brightness_received_after_send) = false;
+
           if (id(dial_lights_id).active_has_valid_state()) {
             id(light_on) = id(dial_lights_id).active_is_on();
           }
+
           id(light_supports_brightness) =
               id(dial_lights_id).active_supports_brightness();
+
           id(light_supports_rgb) =
               id(dial_lights_id).active_supports_rgb();
       - script.execute: open_light
