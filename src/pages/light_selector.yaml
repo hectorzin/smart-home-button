@@ -82,6 +82,22 @@ script:
           }
           id(light_supports_brightness) = id(dial_lights_id).active_supports_brightness();
           id(light_supports_rgb) = id(dial_lights_id).active_supports_rgb();
+
+          if (id(dial_lights_id).active_brightness_valid()) {
+            const int pct = id(dial_lights_id).active_brightness_percent();
+            id(light_brightness) = pct;
+            id(light_requested_brightness) = pct;
+            id(light_last_ha_brightness) = pct;
+          }
+
+          if (id(dial_lights_id).active_color_valid()) {
+            id(light_color_r) = id(dial_lights_id).active_color_r();
+            id(light_color_g) = id(dial_lights_id).active_color_g();
+            id(light_color_b) = id(dial_lights_id).active_color_b();
+            const int hue = id(dial_lights_id).active_color_h();
+            id(light_color_h) = hue;
+            id(light_color_h_prev) = hue;
+          }
       - script.execute: open_light
 
 lvgl:

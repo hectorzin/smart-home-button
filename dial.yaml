@@ -21,14 +21,20 @@ dial_lights:
     name: Sofá
     state_sensor: dial_light_sofa_state
     modes_sensor: dial_light_sofa_modes
+    brightness_sensor: dial_light_sofa_brightness
+    color_sensor: dial_light_sofa_rgb
   - entity_id: light.mesa
     name: Mesa
     state_sensor: dial_light_mesa_state
     modes_sensor: dial_light_mesa_modes
+    brightness_sensor: dial_light_mesa_brightness
+    color_sensor: dial_light_mesa_rgb
   - entity_id: light.luces_jardin
     name: Jardín
     state_sensor: dial_light_jardin_state
     modes_sensor: dial_light_jardin_modes
+    brightness_sensor: dial_light_jardin_brightness
+    color_sensor: dial_light_jardin_rgb
 
 substitutions:
   timezone: Europe/Madrid

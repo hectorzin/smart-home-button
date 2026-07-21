@@ -1,6 +1,7 @@
 #include "dial_lights.h"
 
 #include <cctype>
+#include <cmath>
 
 #include "esphome/core/log.h"
 
@@ -33,20 +34,64 @@ void parse_color_modes(const std::string &raw, bool &supports_brightness, bool &
     }
   }
 }
+
+bool parse_brightness_percent(float raw, int &percent) {
+  if (!std::isfinite(raw))
+    return false;
+  float clamped = raw;
+  if (clamped < 0.0f)
+    clamped = 0.0f;
+  else if (clamped > 255.0f)
+    clamped = 255.0f;
+  percent = static_cast<int>(clamped * 100.0f / 255.0f + 0.5f);
+  if (percent < 0)
+    percent = 0;
+  else if (percent > 100)
+    percent = 100;
+  return true;
+}
+
+bool parse_rgb_color(const std::string &raw, int &r, int &g, int &b) {
+  if (sscanf(raw.c_str(), "[%d, %d, %d]", &r, &g, &b) != 3)
+    return false;
+  r = std::max(0, std::min(255, r));
+  g = std::max(0, std::min(255, g));
+  b = std::max(0, std::min(255, b));
+  return true;
+}
+
+int rgb_to_hue(int r, int g, int b) {
+  float rf = r / 255.0f;
+  float gf = g / 255.0f;
+  float bf = b / 255.0f;
+  float maxc = std::max(rf, std::max(gf, bf));
+  float minc = std::min(rf, std::min(gf, bf));
+  float delta = maxc - minc;
+  float hue = 0.0f;
+  if (delta > 0.0001f) {
+    if (maxc == rf)
+      hue = 60.0f * std::fmod((gf - bf) / delta, 6.0f);
+    else if (maxc == gf)
+      hue = 60.0f * (((bf - rf) / delta) + 2.0f);
+    else
+      hue = 60.0f * (((rf - gf) / delta) + 4.0f);
+  }
+  if (hue < 0.0f)
+    hue += 360.0f;
+  return static_cast<int>(hue + 0.5f) % 360;
+}
 }  // namespace
 
-void DialLights::add_light(
-    const std::string &entity_id,
-    const std::string &name,
-    text_sensor::TextSensor *state,
-    text_sensor::TextSensor *modes) {
+void DialLights::add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state,
+                           text_sensor::TextSensor *modes, sensor::Sensor *brightness, text_sensor::TextSensor *color) {
   for (const auto &existing : this->lights_) {
     if (existing.entity_id == entity_id) {
       ESP_LOGW(TAG, "Duplicate light entity_id ignored: %s", entity_id.c_str());
       return;
     }
   }
-  this->lights_.push_back({entity_id, name, state, false, false, modes, false, false});
+  this->lights_.push_back({entity_id, name, state, false, false, modes, false, false, brightness, false, 75, color,
+                           false, 169, 143, 255});
 }
 
 void DialLights::setup() {
@@ -64,6 +109,18 @@ void DialLights::setup() {
         this->on_modes_(i, light.modes->state);
       }
     }
+    if (light.brightness != nullptr) {
+      light.brightness->add_on_state_callback([this, i](float value) { this->on_brightness_(i, value); });
+      if (light.brightness->has_state()) {
+        this->on_brightness_(i, light.brightness->state);
+      }
+    }
+    if (light.color != nullptr) {
+      light.color->add_on_state_callback([this, i](const std::string &value) { this->on_color_(i, value); });
+      if (light.color->has_state()) {
+        this->on_color_(i, light.color->state);
+      }
+    }
   }
 }
 
@@ -75,6 +132,15 @@ void DialLights::load_active_snapshot() {
 
   light.state_valid = false;
   light.is_on = false;
+  light.supports_brightness = false;
+  light.supports_rgb = false;
+  light.brightness_valid = false;
+  light.brightness_percent = 75;
+  light.color_valid = false;
+  light.color_r = 169;
+  light.color_g = 143;
+  light.color_b = 255;
+
   if (light.state != nullptr && light.state->has_state()) {
     const std::string &value = light.state->state;
     if (value == "on") {
@@ -86,10 +152,28 @@ void DialLights::load_active_snapshot() {
     }
   }
 
-  light.supports_brightness = false;
-  light.supports_rgb = false;
   if (light.modes != nullptr && light.modes->has_state()) {
     parse_color_modes(light.modes->state, light.supports_brightness, light.supports_rgb);
+  }
+
+  if (light.brightness != nullptr && light.brightness->has_state()) {
+    int percent = 0;
+    if (parse_brightness_percent(light.brightness->state, percent)) {
+      light.brightness_valid = true;
+      light.brightness_percent = percent;
+    }
+  }
+
+  if (light.color != nullptr && light.color->has_state()) {
+    int r = 0;
+    int g = 0;
+    int b = 0;
+    if (parse_rgb_color(light.color->state, r, g, b)) {
+      light.color_valid = true;
+      light.color_r = r;
+      light.color_g = g;
+      light.color_b = b;
+    }
   }
 }
 
@@ -117,6 +201,36 @@ void DialLights::on_modes_(size_t index, const std::string &value) {
   parse_color_modes(value, light.supports_brightness, light.supports_rgb);
 }
 
+void DialLights::on_brightness_(size_t index, float value) {
+  auto &light = this->lights_[index];
+  int percent = 75;
+  if (parse_brightness_percent(value, percent)) {
+    light.brightness_valid = true;
+    light.brightness_percent = percent;
+  } else {
+    light.brightness_valid = false;
+    light.brightness_percent = 75;
+  }
+}
+
+void DialLights::on_color_(size_t index, const std::string &value) {
+  auto &light = this->lights_[index];
+  int r = 169;
+  int g = 143;
+  int b = 255;
+  if (parse_rgb_color(value, r, g, b)) {
+    light.color_valid = true;
+    light.color_r = r;
+    light.color_g = g;
+    light.color_b = b;
+  } else {
+    light.color_valid = false;
+    light.color_r = 169;
+    light.color_g = 143;
+    light.color_b = 255;
+  }
+}
+
 bool DialLights::active_has_valid_state() const {
   if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
     return false;
@@ -139,6 +253,51 @@ bool DialLights::active_supports_rgb() const {
   if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
     return false;
   return this->active_entry_().supports_rgb;
+}
+
+bool DialLights::active_brightness_valid() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().brightness_valid;
+}
+
+int DialLights::active_brightness_percent() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return 0;
+  return this->active_entry_().brightness_percent;
+}
+
+bool DialLights::active_color_valid() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().color_valid;
+}
+
+int DialLights::active_color_r() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return 0;
+  return this->active_entry_().color_r;
+}
+
+int DialLights::active_color_g() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return 0;
+  return this->active_entry_().color_g;
+}
+
+int DialLights::active_color_b() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return 0;
+  return this->active_entry_().color_b;
+}
+
+int DialLights::active_color_h() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return 0;
+  const auto &light = this->active_entry_();
+  if (!light.color_valid)
+    return 0;
+  return rgb_to_hue(light.color_r, light.color_g, light.color_b);
 }
 
 void DialLights::select_light(size_t index) {
