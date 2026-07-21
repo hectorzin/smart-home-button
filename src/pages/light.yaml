@@ -638,9 +638,14 @@ script:
           if (max_k - min_k < 1) max_k = min_k + 1;
           int step = (max_k - min_k + 119) / 120;
           if (step < 1) step = 1;
-          int k = id(light_white_kelvin) + step;
-          if (k > max_k) k = max_k;
-          id(light_white_kelvin) = k;
+          int k = id(light_white_kelvin);
+          if (k >= max_k) {
+            id(light_white_kelvin) = min_k;
+          } else {
+            k += step;
+            if (k > max_k) k = max_k;
+            id(light_white_kelvin) = k;
+          }
       - script.execute: refresh_color_preview
 
   - id: light_kelvin_down
@@ -652,21 +657,26 @@ script:
           if (max_k - min_k < 1) max_k = min_k + 1;
           int step = (max_k - min_k + 119) / 120;
           if (step < 1) step = 1;
-          int k = id(light_white_kelvin) - step;
-          if (k < min_k) k = min_k;
-          id(light_white_kelvin) = k;
+          int k = id(light_white_kelvin);
+          if (k <= min_k) {
+            id(light_white_kelvin) = max_k;
+          } else {
+            k -= step;
+            if (k < min_k) k = min_k;
+            id(light_white_kelvin) = k;
+          }
       - script.execute: refresh_color_preview
 
   - id: refresh_color_preview
     then:
       - lambda: |-
+          int r8, g8, b8;
           if (id(light_color_picker_mode) == 0) {
             int h = id(light_color_h);
             int hi = (h / 60) % 6;
             float f = h / 60.0f - (int)(h / 60.0f);
             int q = (int)(255.0f * (1.0f - f));
             int t = (int)(255.0f * f);
-            int r8, g8, b8;
             switch (hi) {
               case 0: r8=255; g8=t;   b8=0;   break;
               case 1: r8=q;   g8=255; b8=0;   break;
@@ -675,9 +685,6 @@ script:
               case 4: r8=t;   g8=0;   b8=255; break;
               default: r8=255; g8=0;  b8=q;   break;
             }
-            lv_color_t col = lv_color_make(r8, g8, b8);
-            lv_obj_set_style_bg_color(id(cw_color_circle), col, LV_STATE_DEFAULT);
-            lv_obj_set_style_arc_color(id(cp_arc), col, LV_PART_INDICATOR);
             static char hbuf[7];
             snprintf(hbuf, sizeof(hbuf), "%02X%02X%02X", r8, g8, b8);
             lv_label_set_text(id(lbl_hex_val), hbuf);
@@ -689,7 +696,6 @@ script:
             if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
             if (max_k - min_k < 1) max_k = min_k + 1;
             float temp = kelvin / 100.0f;
-            int r8, g8, b8;
             if (temp <= 66.0f) {
               r8 = 255;
               g8 = (int)(99.4708025861f * logf(temp) - 161.1195681661f + 0.5f);
@@ -702,14 +708,18 @@ script:
             r8 = std::max(0, std::min(255, r8));
             g8 = std::max(0, std::min(255, g8));
             b8 = std::max(0, std::min(255, b8));
-            lv_color_t col = lv_color_make(r8, g8, b8);
-            lv_obj_set_style_bg_color(id(cw_color_circle), col, LV_STATE_DEFAULT);
-            lv_obj_set_style_arc_color(id(cp_arc), col, LV_PART_INDICATOR);
             static char kbuf[8];
             snprintf(kbuf, sizeof(kbuf), "%dK", kelvin);
             lv_label_set_text(id(lbl_hex_val), kbuf);
             lv_label_set_text(id(lbl_cp_mode), "WHITE");
           }
+          lv_color_t col = lv_color_make(r8, g8, b8);
+          lv_obj_set_style_bg_color(id(cw_color_circle), col, LV_STATE_DEFAULT);
+          lv_obj_set_style_arc_color(id(cp_arc), col, LV_PART_INDICATOR);
+          const int luminance = (299 * r8 + 587 * g8 + 114 * b8) / 1000;
+          const lv_color_t text_col = luminance >= 150 ? lv_color_hex(0x000000) : lv_color_hex(0xFFFFFF);
+          lv_obj_set_style_text_color(id(lbl_hex_val), text_col, LV_STATE_DEFAULT);
+          lv_obj_set_style_text_color(id(lbl_cp_mode), text_col, LV_STATE_DEFAULT);
       - lvgl.arc.update:
           id: cp_arc
           value: !lambda |-
