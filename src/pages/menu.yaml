@@ -71,6 +71,27 @@ globals:
     type: bool
     initial_value: 'false'
 
+dial_carousel:
+  - id: menu_carousel
+    slots:
+      - container: slot_far_up
+        icon: slot_far_up_img
+        title: slot_far_up_lbl
+      - container: slot_near_up
+        icon: slot_near_up_img
+        title: slot_near_up_lbl
+      - container: slot_center
+        icon: slot_center_img
+        title: slot_center_lbl
+      - container: slot_near_dn
+        icon: slot_near_dn_img
+        title: slot_near_dn_lbl
+      - container: slot_far_dn
+        icon: slot_far_dn_img
+        title: slot_far_dn_lbl
+    center_bar: slot_center_bar
+    center_sub: slot_center_sub
+
 script:
   - id: open_menu
     then:
@@ -96,112 +117,17 @@ script:
           then:
             - globals.set: {id: menu_animating, value: 'true'}
             - lambda: |-
-                // Counterclockwise arc scroll: previous item moves into center.
-                static lv_anim_t a;
-                lv_anim_init(&a);
-                lv_anim_set_var(&a, nullptr);
-                lv_anim_set_values(&a, 0, 100);
-                lv_anim_set_time(&a, 200);
-                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
-                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
-                  const int SLOT_N = 5;
-                  const int ITEM_N = 5;
-                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
-                  const float CY = 120.0f;
-                  const float ARC_CX = 162.0f;
-                  const float R = 98.0f;
-                  // Non-uniform spacing: near=60px, far=96px (independent)
-                  auto arc_dy = [](float off) -> float {
-                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
-                    const float a = fabsf(off);
-                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
-                  };
-
-                  lv_obj_t* slots[5] = {
-                    id(slot_far_up), id(slot_near_up), id(slot_center),
-                    id(slot_near_dn), id(slot_far_dn)
-                  };
-
-                  lv_obj_t* icons[5] = {
-                    id(slot_far_up_img),  id(slot_near_up_img),
-                    id(slot_center_img),
-                    id(slot_near_dn_img), id(slot_far_dn_img)
-                  };
-                  lv_obj_t* title_lbls[5] = {
-                    id(slot_far_up_lbl),  id(slot_near_up_lbl),
-                    id(slot_center_lbl),
-                    id(slot_near_dn_lbl), id(slot_far_dn_lbl)
-                  };
-
-                  const float phase = progress / 100.0f;
-                  int center_sub_opa = 0;
-
-                  for (int i = 0; i < SLOT_N; i++) {
-                    const float off = OFFSETS[i] + phase;
-                    float dy = arc_dy(off);
-                    if (dy > R) dy = R;
-                    if (dy < -R) dy = -R;
-
-                    const float theta = asinf(dy / R);
-                    const float x = ARC_CX - R * cosf(theta);
-                    const float y = CY + R * sinf(theta);
-
-                    float closeness = 1.0f - (fabsf(off) / 2.0f);
-                    if (closeness < 0.0f) closeness = 0.0f;
-                    if (closeness > 1.0f) closeness = 1.0f;
-
-                    const int mix = (int)(closeness * 1000.0f);
-                    int w = 40;
-                    int opa_text = 0;
-                    int opa_bg = 0;
-                    int pill_shift = 0;
-
-                    if (mix > 760) {
-                      w = lv_map(mix, 760, 1000, 40, 168);
-                    }
-                    if (mix > 840) {
-                      opa_text = lv_map(mix, 840, 1000, 0, 255);
-                    }
-                    if (mix > 820) {
-                      opa_bg = lv_map(mix, 820, 1000, 0, 255);
-                    }
-                    if (mix > 760) {
-                      pill_shift = lv_map(mix, 760, 1000, 0, 54);
-                    }
-                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
-
-                    lv_obj_set_width(slots[i], w);
-                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
-                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
-                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
-                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
-
-                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
-                    if (i == 2) {
-                      lv_obj_set_pos(id(slot_center_bar),
-                        (int)(x - 14.0f - 120.0f + pill_shift) - 10,
-                        (int)(y - 16.0f));
-                    }
-
-                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
-                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
-
-                    if (i == 2) {
-                      center_sub_opa = opa_text;
-                    }
-                  }
-
-                  lv_obj_set_style_opa(id(slot_center_sub), center_sub_opa, LV_PART_MAIN);
-
-                  lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
-                });
-                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
-                  int n = 5;
+                lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
+                auto on_ready = +[](void *ctx) {
+                  const int n = 5;
                   id(menu_sel) = ((id(menu_sel) - 1) % n + n) % n;
                   id(refresh_menu).execute();
                   id(menu_animating) = false;
-                });
-                lv_anim_start(&a);
+                };
+                if (!id(menu_carousel).start_animation(
+                        esphome::dial_carousel::CarouselDirection::UP, 54, on_ready, nullptr)) {
+                  id(menu_animating) = false;
+                }
 
   - id: menu_scroll_down
     then:
@@ -211,111 +137,16 @@ script:
           then:
             - globals.set: {id: menu_animating, value: 'true'}
             - lambda: |-
-                // Clockwise arc scroll: next item moves into center.
-                static lv_anim_t a;
-                lv_anim_init(&a);
-                lv_anim_set_var(&a, nullptr);
-                lv_anim_set_values(&a, 0, 100);
-                lv_anim_set_time(&a, 200);
-                lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
-                lv_anim_set_exec_cb(&a, [](void * obj, int32_t progress) {
-                  const int SLOT_N = 5;
-                  const int ITEM_N = 5;
-                  const int OFFSETS[5] = {-2, -1, 0, 1, 2};
-                  const float CY = 120.0f;
-                  const float ARC_CX = 162.0f;
-                  const float R = 98.0f;
-                  // Non-uniform spacing: near=60px, far=96px (independent)
-                  auto arc_dy = [](float off) -> float {
-                    const float s = (off >= 0.0f) ? 1.0f : -1.0f;
-                    const float a = fabsf(off);
-                    return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
-                  };
-
-                  lv_obj_t* slots[5] = {
-                    id(slot_far_up), id(slot_near_up), id(slot_center),
-                    id(slot_near_dn), id(slot_far_dn)
-                  };
-
-                  lv_obj_t* icons[5] = {
-                    id(slot_far_up_img),  id(slot_near_up_img),
-                    id(slot_center_img),
-                    id(slot_near_dn_img), id(slot_far_dn_img)
-                  };
-                  lv_obj_t* title_lbls[5] = {
-                    id(slot_far_up_lbl),  id(slot_near_up_lbl),
-                    id(slot_center_lbl),
-                    id(slot_near_dn_lbl), id(slot_far_dn_lbl)
-                  };
-
-                  const float phase = progress / 100.0f;
-                  int center_sub_opa = 0;
-
-                  for (int i = 0; i < SLOT_N; i++) {
-                    const float off = OFFSETS[i] - phase;
-                    float dy = arc_dy(off);
-                    if (dy > R) dy = R;
-                    if (dy < -R) dy = -R;
-
-                    const float theta = asinf(dy / R);
-                    const float x = ARC_CX - R * cosf(theta);
-                    const float y = CY + R * sinf(theta);
-
-                    float closeness = 1.0f - (fabsf(off) / 2.0f);
-                    if (closeness < 0.0f) closeness = 0.0f;
-                    if (closeness > 1.0f) closeness = 1.0f;
-
-                    const int mix = (int)(closeness * 1000.0f);
-                    int w = 40;
-                    int opa_text = 0;
-                    int opa_bg = 0;
-                    int pill_shift = 0;
-
-                    if (mix > 760) {
-                      w = lv_map(mix, 760, 1000, 40, 168);
-                    }
-                    if (mix > 840) {
-                      opa_text = lv_map(mix, 840, 1000, 0, 255);
-                    }
-                    if (mix > 820) {
-                      opa_bg = lv_map(mix, 820, 1000, 0, 255);
-                    }
-                    if (mix > 760) {
-                      pill_shift = lv_map(mix, 760, 1000, 0, 64);
-                    }
-                    const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
-
-                    lv_obj_set_width(slots[i], w);
-                    lv_obj_set_height(slots[i], i == 2 ? 56 : 40);
-                    lv_obj_set_style_radius(slots[i], i == 2 ? 28 : 20, LV_PART_MAIN);
-                    lv_obj_set_style_bg_color(slots[i], lv_color_hex(0x0D1537), LV_PART_MAIN);
-                    lv_obj_set_style_bg_opa(slots[i], opa_bg, LV_PART_MAIN);
-
-                    lv_obj_set_pos(slots[i], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (i == 2 ? 28.0f : 20.0f)));
-                    if (i == 2) {
-                      lv_obj_set_pos(id(slot_center_bar),
-                        (int)(x - 14.0f - 120.0f + pill_shift) - 10,
-                        (int)(y - 16.0f));
-                    }
-
-                    lv_obj_set_style_opa(icons[i], opa_icon, LV_PART_MAIN);
-                    lv_obj_set_style_opa(title_lbls[i], opa_text, LV_PART_MAIN);
-
-                    if (i == 2) {
-                      center_sub_opa = opa_text;
-                    }
-                  }
-
-                  lv_obj_set_style_opa(id(slot_center_sub), center_sub_opa, LV_PART_MAIN);
-
-                  lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
-                });
-                lv_anim_set_ready_cb(&a, [](lv_anim_t * anim) {
+                lv_obj_add_flag(id(menu_arrow), LV_OBJ_FLAG_HIDDEN);
+                auto on_ready = +[](void *ctx) {
                   id(menu_sel) = (id(menu_sel) + 1) % 5;
                   id(refresh_menu).execute();
                   id(menu_animating) = false;
-                });
-                lv_anim_start(&a);
+                };
+                if (!id(menu_carousel).start_animation(
+                        esphome::dial_carousel::CarouselDirection::DOWN, 64, on_ready, nullptr)) {
+                  id(menu_animating) = false;
+                }
 
   - id: menu_confirm
     then:
@@ -340,15 +171,7 @@ script:
       - lambda: |-
           const int ITEM_N = 5;
           const int SLOT_N = 5;
-          const float CY = 120.0f;
-          const float ARC_CX = 162.0f;
-          const float R = 98.0f;
-          // Non-uniform spacing: near=60px, far=96px (independent)
-          auto arc_dy = [](float off) -> float {
-            const float s = (off >= 0.0f) ? 1.0f : -1.0f;
-            const float a = fabsf(off);
-            return s * (a <= 1.0f ? a * 60.0f : 60.0f + (a - 1.0f) * 36.0f);
-          };
+          const int OFFSETS[5] = {-2, -1, 0, 1, 2};
 
           lv_obj_t* icons[5] = {
             id(slot_far_up_img),  id(slot_near_up_img),
@@ -360,7 +183,6 @@ script:
             id(slot_center_lbl),
             id(slot_near_dn_lbl), id(slot_far_dn_lbl)
           };
-          const int OFFSETS[5] = {-2, -1, 0, 1, 2};
 
           const char* TITLES[5]    = {"Timer", "Lights", "AC", "Music", "Home"};
           const char* SUBTITLES[5] = {"Living Rm - Auto", "Living Rm - 75%",
@@ -373,21 +195,19 @@ script:
             id(menu_img_music)->get_lv_image_dsc(),
             id(menu_img_home)->get_lv_image_dsc()
           };
-          // Per-item accent colors: Timer, Lights, AC, Music, Home
           const uint32_t ACCENT_COLORS[5] = {
-            0xFB923C,  // Timer   - orange
-            0xFDC003,  // Lights  - yellow
-            0x5ABBFD,  // AC      - ice blue
-            0xA792E8,  // Music   - purple
-            0x576BFE   // Home    - blue
+            0xFB923C,
+            0xFDC003,
+            0x5ABBFD,
+            0xA792E8,
+            0x576BFE
           };
-          // Pill bg: darker version of accent
           const uint32_t PILL_COLORS[5] = {
-            0x2A1200,  // Timer
-            0x2A1E00,  // Lights
-            0x001A2A,  // AC
-            0x150A2A,  // Music
-            0x0D1537   // Home
+            0x2A1200,
+            0x2A1E00,
+            0x001A2A,
+            0x150A2A,
+            0x0D1537
           };
           int sel = id(menu_sel);
 
@@ -398,76 +218,38 @@ script:
 
           for (int slot = 0; slot < SLOT_N; slot++) {
             int di = ((sel + OFFSETS[slot]) % ITEM_N + ITEM_N) % ITEM_N;
+            const auto layout = id(menu_carousel).compute_static_layout(slot, 54);
+            id(menu_carousel).apply_container_geometry(slot, layout);
 
-            const float off = OFFSETS[slot];
-            float dy = arc_dy(off);
-            if (dy > R) dy = R;
-            if (dy < -R) dy = -R;
-
-            const float theta = asinf(dy / R);
-            const float x = ARC_CX - R * cosf(theta);
-            const float y = CY + R * sinf(theta);
-
-            float closeness = 1.0f - (fabsf(off) / 2.0f);
-            if (closeness < 0.0f) closeness = 0.0f;
-            if (closeness > 1.0f) closeness = 1.0f;
-            const int mix = (int)(closeness * 1000.0f);
-
-            int w = 40;
-            int opa_text = 0;
-            int opa_bg = 0;
-            int pill_shift = 0;
-            if (mix > 760) {
-              w = lv_map(mix, 760, 1000, 40, 168);
-            }
-            if (mix > 840) {
-              opa_text = lv_map(mix, 840, 1000, 0, 255);
-            }
-            if (mix > 820) {
-              opa_bg = lv_map(mix, 820, 1000, 0, 255);
-            }
-            if (mix > 760) {
-              pill_shift = lv_map(mix, 760, 1000, 0, 54);
-            }
-            const int opa_icon = lv_map(mix, 0, 1000, 96, 255);
-
-            lv_obj_set_width(slots[slot], w);
-            lv_obj_set_height(slots[slot], slot == 2 ? 56 : 40);
-            lv_obj_set_style_radius(slots[slot], slot == 2 ? 28 : 20, LV_PART_MAIN);
-            // Use per-item pill color for center slot, dim for others
             if (slot == 2) {
               lv_obj_set_style_bg_color(slots[slot], lv_color_hex(PILL_COLORS[di]), LV_PART_MAIN);
-              lv_obj_set_style_bg_opa(slots[slot], 128, LV_PART_MAIN); // Center 50% opacity
+              lv_obj_set_style_bg_opa(slots[slot], 128, LV_PART_MAIN);
               lv_obj_set_style_border_color(slots[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
               lv_obj_set_style_border_width(slots[slot], 2, LV_PART_MAIN);
               lv_obj_set_style_border_opa(slots[slot], 255, LV_PART_MAIN);
             } else {
               lv_obj_set_style_bg_color(slots[slot], lv_color_hex(0x0D1537), LV_PART_MAIN);
-              lv_obj_set_style_bg_opa(slots[slot], opa_bg, LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], layout.opa_bg, LV_PART_MAIN);
               lv_obj_set_style_border_width(slots[slot], 0, LV_PART_MAIN);
             }
 
-            lv_obj_set_pos(slots[slot], (int)(x - 14.0f - 120.0f + pill_shift), (int)(y - (slot == 2 ? 28.0f : 20.0f)));
-
-            // Update accent bar position to follow center slot
             if (slot == 2) {
-              int bx = (int)(x - 14.0f - 120.0f + pill_shift) - 10;
-              int by = (int)(y - 16.0f);
+              int bx = layout.x - 10;
+              int by = layout.y + 12;
               lv_obj_set_pos(id(slot_center_bar), bx, by);
               lv_obj_set_style_bg_color(id(slot_center_bar), lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
-              lv_obj_set_style_opa(id(slot_center_bar), 0, LV_PART_MAIN); // Hide the bar
+              lv_obj_set_style_opa(id(slot_center_bar), 0, LV_PART_MAIN);
             }
 
             lv_label_set_text(title_lbls[slot], TITLES[di]);
-            // Center slot title uses accent color, others use dim
             if (slot == 2) {
               lv_obj_set_style_text_color(title_lbls[slot], lv_color_hex(ACCENT_COLORS[di]), LV_PART_MAIN);
             } else {
               lv_obj_set_style_text_color(title_lbls[slot], lv_color_hex(0x232A38), LV_PART_MAIN);
             }
-            lv_obj_set_style_opa(title_lbls[slot], slot == 2 ? 255 : opa_text, LV_PART_MAIN);
+            lv_obj_set_style_opa(title_lbls[slot], slot == 2 ? 255 : layout.opa_text, LV_PART_MAIN);
             lv_img_set_src(icons[slot], IMGS[di]);
-            lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : opa_icon, LV_PART_MAIN);
+            lv_obj_set_style_opa(icons[slot], slot == 2 ? 255 : layout.opa_icon, LV_PART_MAIN);
           }
 
           {

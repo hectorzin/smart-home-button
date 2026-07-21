@@ -158,6 +158,9 @@ sensor:
             lambda: 'return id(in_light_selector);'
           then:
             - lambda: |-
+                if (id(selector_carousel).is_animating()) {
+                  return;
+                }
                 const int before = id(light_selector_encoder_accum);
                 const int after = before + 1;
                 id(light_selector_encoder_accum) = after;
@@ -165,8 +168,7 @@ sensor:
                   return;
                 }
                 id(light_selector_encoder_accum) = 0;
-                id(dial_lights_id).select_next();
-                id(refresh_light_selector).execute();
+                id(light_selector_scroll_down).execute();
           else:
             - if:
                 condition:
@@ -221,6 +223,9 @@ sensor:
             lambda: 'return id(in_light_selector);'
           then:
             - lambda: |-
+                if (id(selector_carousel).is_animating()) {
+                  return;
+                }
                 const int before = id(light_selector_encoder_accum);
                 const int after = before - 1;
                 id(light_selector_encoder_accum) = after;
@@ -228,8 +233,7 @@ sensor:
                   return;
                 }
                 id(light_selector_encoder_accum) = 0;
-                id(dial_lights_id).select_previous();
-                id(refresh_light_selector).execute();
+                id(light_selector_scroll_up).execute();
           else:
             - if:
                 condition:

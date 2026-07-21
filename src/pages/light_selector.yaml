@@ -6,24 +6,355 @@ globals:
     type: int
     initial_value: '0'
 
+dial_carousel:
+  - id: selector_carousel
+    slots:
+      - container: ls_slot_far_up
+        icon: ls_slot_far_up_img
+        title: ls_slot_far_up_lbl
+      - container: ls_slot_near_up
+        icon: ls_slot_near_up_img
+        title: ls_slot_near_up_lbl
+      - container: ls_slot_center
+        icon: ls_slot_center_img
+        title: ls_slot_center_lbl
+      - container: ls_slot_near_dn
+        icon: ls_slot_near_dn_img
+        title: ls_slot_near_dn_lbl
+      - container: ls_slot_far_dn
+        icon: ls_slot_far_dn_img
+        title: ls_slot_far_dn_lbl
+    center_bar: ls_slot_center_bar
+    center_sub: ls_slot_center_sub
+
 script:
+  - id: light_selector_scroll_up
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(dial_lights_id).light_count() > 0 &&
+                     !id(selector_carousel).is_animating();
+          then:
+            - lambda: |-
+                auto on_ready = +[](void *ctx) {
+                  id(dial_lights_id).select_previous();
+                  id(refresh_light_selector).execute();
+                };
+                if (!id(selector_carousel).start_animation(
+                        esphome::dial_carousel::CarouselDirection::UP, 54, on_ready, nullptr)) {
+                  return;
+                }
+
+  - id: light_selector_scroll_down
+    then:
+      - if:
+          condition:
+            lambda: |-
+              return id(dial_lights_id).light_count() > 0 &&
+                     !id(selector_carousel).is_animating();
+          then:
+            - lambda: |-
+                auto on_ready = +[](void *ctx) {
+                  id(dial_lights_id).select_next();
+                  id(refresh_light_selector).execute();
+                };
+                if (!id(selector_carousel).start_animation(
+                        esphome::dial_carousel::CarouselDirection::DOWN, 64, on_ready, nullptr)) {
+                  return;
+                }
+
   - id: refresh_light_selector
     then:
-      - lvgl.label.update:
-          id: lbl_light_selector_previous
-          text: !lambda |-
-            const size_t count = id(dial_lights_id).light_count();
-            const size_t active = id(dial_lights_id).active_index();
-            return id(dial_lights_id).name_at((active + count - 1) % count).c_str();
-      - lvgl.label.update:
-          id: lbl_light_selector_current
-          text: !lambda 'return id(dial_lights_id).active_name().c_str();'
-      - lvgl.label.update:
-          id: lbl_light_selector_next
-          text: !lambda |-
-            const size_t count = id(dial_lights_id).light_count();
-            const size_t active = id(dial_lights_id).active_index();
-            return id(dial_lights_id).name_at((active + 1) % count).c_str();
+      - lambda: |-
+          auto kelvin_to_rgb = [](int kelvin, int &r8, int &g8, int &b8) {
+            float temp = kelvin / 100.0f;
+            if (temp <= 66.0f) {
+              r8 = 255;
+              g8 = (int) (99.4708025861f * logf(temp) - 161.1195681661f + 0.5f);
+              b8 = temp <= 19.0f ? 0 : (int) (138.5177312231f * logf(temp - 10.0f) - 305.0447927307f + 0.5f);
+            } else {
+              r8 = (int) (329.698727446f * powf(temp - 60.0f, -0.1332047592f) + 0.5f);
+              g8 = (int) (288.1221695283f * powf(temp - 60.0f, -0.0755148492f) + 0.5f);
+              b8 = 255;
+            }
+            r8 = std::max(0, std::min(255, r8));
+            g8 = std::max(0, std::min(255, g8));
+            b8 = std::max(0, std::min(255, b8));
+          };
+
+          auto text_color_for_bg = [](int r, int g, int b) -> lv_color_t {
+            const int lum = (299 * r + 587 * g + 114 * b) / 1000;
+            return lum >= 150 ? lv_color_hex(0x000000) : lv_color_hex(0xFFFFFF);
+          };
+
+          auto format_subtitle = [](const esphome::dial_lights::LightCardSnapshot &s, char *buf, size_t len) {
+            if (!s.state_valid || !s.is_on) {
+              snprintf(buf, len, "OFF");
+              return;
+            }
+            if (s.brightness_valid) {
+              snprintf(buf, len, "%d%%", s.brightness_percent);
+              return;
+            }
+            if (s.color_temp_valid) {
+              snprintf(buf, len, "%dK", s.color_temp_kelvin);
+              return;
+            }
+            snprintf(buf, len, "ON");
+          };
+
+          struct CardColors {
+            uint32_t accent;
+            uint32_t pill_bg;
+            int pill_r;
+            int pill_g;
+            int pill_b;
+            bool use_dynamic_text;
+          };
+
+          auto colors_for_snapshot = [&](const esphome::dial_lights::LightCardSnapshot &s) -> CardColors {
+            CardColors c{};
+            c.accent = 0x282729;
+            c.pill_bg = 0x232A38;
+            c.pill_r = 35;
+            c.pill_g = 42;
+            c.pill_b = 56;
+            c.use_dynamic_text = false;
+
+            if (!s.state_valid || !s.is_on) {
+              return c;
+            }
+
+            if (s.color_mode_valid && s.is_color_temp_mode && s.color_temp_valid) {
+              int r8 = 255;
+              int g8 = 255;
+              int b8 = 255;
+              kelvin_to_rgb(s.color_temp_kelvin, r8, g8, b8);
+              c.accent = (static_cast<uint32_t>(r8) << 16) | (static_cast<uint32_t>(g8) << 8) | static_cast<uint32_t>(b8);
+              c.pill_r = std::max(16, r8 * 30 / 100);
+              c.pill_g = std::max(16, g8 * 30 / 100);
+              c.pill_b = std::max(16, b8 * 30 / 100);
+              c.pill_bg = (static_cast<uint32_t>(c.pill_r) << 16) | (static_cast<uint32_t>(c.pill_g) << 8) |
+                          static_cast<uint32_t>(c.pill_b);
+              c.use_dynamic_text = true;
+              return c;
+            }
+
+            if (s.color_valid && s.supports_rgb) {
+              c.accent = (static_cast<uint32_t>(s.color_r) << 16) | (static_cast<uint32_t>(s.color_g) << 8) |
+                         static_cast<uint32_t>(s.color_b);
+              c.pill_r = std::max(16, s.color_r * 30 / 100);
+              c.pill_g = std::max(16, s.color_g * 30 / 100);
+              c.pill_b = std::max(16, s.color_b * 30 / 100);
+              c.pill_bg = (static_cast<uint32_t>(c.pill_r) << 16) | (static_cast<uint32_t>(c.pill_g) << 8) |
+                          static_cast<uint32_t>(c.pill_b);
+              c.use_dynamic_text = true;
+              return c;
+            }
+
+            c.accent = 0xFDC003;
+            c.pill_bg = 0x2A1E00;
+            c.pill_r = 42;
+            c.pill_g = 30;
+            c.pill_b = 0;
+            return c;
+          };
+
+          auto style_dot = [](lv_obj_t *dot, bool selected, uint32_t accent) {
+            if (selected) {
+              lv_obj_set_style_bg_color(dot, lv_color_hex(accent), LV_PART_MAIN);
+              lv_obj_set_style_opa(dot, 255, LV_PART_MAIN);
+              lv_obj_set_size(dot, 8, 8);
+              lv_obj_set_style_radius(dot, 0, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(dot, 450, LV_PART_MAIN);
+            } else {
+              lv_obj_set_style_bg_color(dot, lv_color_hex(0x2A3348), LV_PART_MAIN);
+              lv_obj_set_style_opa(dot, 180, LV_PART_MAIN);
+              lv_obj_set_size(dot, 4, 4);
+              lv_obj_set_style_radius(dot, 2, LV_PART_MAIN);
+              lv_obj_set_style_transform_angle(dot, 0, LV_PART_MAIN);
+            }
+          };
+
+          auto resolve_light_index = [](size_t count, size_t active, int offset, size_t &idx) -> bool {
+            if (count == 0)
+              return false;
+            if (count == 1) {
+              if (offset == 0) {
+                idx = 0;
+                return true;
+              }
+              return false;
+            }
+            if (count == 2) {
+              if (offset == 0) {
+                idx = active;
+                return true;
+              }
+              const size_t other = (active + 1) % 2;
+              if (offset == -1 && active == 1) {
+                idx = other;
+                return true;
+              }
+              if (offset == 1 && active == 0) {
+                idx = other;
+                return true;
+              }
+              return false;
+            }
+            idx = (static_cast<int>(active) + offset + static_cast<int>(count)) % static_cast<int>(count);
+            return true;
+          };
+
+          auto paint_lateral = [&](size_t index, lv_obj_t *slot, lv_obj_t *img, lv_obj_t *lbl,
+                                   const esphome::dial_carousel::CarouselSlotLayout &layout) {
+            const auto snap = id(dial_lights_id).card_snapshot_at(index);
+            lv_label_set_text(lbl, snap.name.c_str());
+            lv_obj_set_style_text_color(lbl, lv_color_hex(0x232A38), LV_PART_MAIN);
+            lv_obj_set_style_opa(lbl, layout.opa_text > 0 ? layout.opa_text : 140, LV_PART_MAIN);
+            lv_obj_set_style_opa(img, layout.opa_icon, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(slot, lv_color_hex(0x0D1537), LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(slot, layout.opa_bg, LV_PART_MAIN);
+            lv_obj_set_style_border_width(slot, 0, LV_PART_MAIN);
+          };
+
+          auto paint_empty_lateral = [&](lv_obj_t *slot, lv_obj_t *img, lv_obj_t *lbl,
+                                           const esphome::dial_carousel::CarouselSlotLayout &layout) {
+            lv_label_set_text(lbl, "");
+            lv_obj_set_style_opa(lbl, 0, LV_PART_MAIN);
+            lv_obj_set_style_opa(img, 0, LV_PART_MAIN);
+            lv_obj_set_style_bg_color(slot, lv_color_hex(0x0D1537), LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(slot, layout.opa_bg, LV_PART_MAIN);
+            lv_obj_set_style_border_width(slot, 0, LV_PART_MAIN);
+          };
+
+          auto paint_center = [&](size_t index, const esphome::dial_carousel::CarouselSlotLayout &layout) {
+            const auto snap = id(dial_lights_id).card_snapshot_at(index);
+            const CardColors cc = colors_for_snapshot(snap);
+            char subbuf[8];
+            format_subtitle(snap, subbuf, sizeof(subbuf));
+
+            lv_obj_t *slot = id(ls_slot_center);
+            lv_obj_t *img = id(ls_slot_center_img);
+            lv_obj_t *lbl = id(ls_slot_center_lbl);
+            lv_obj_t *sub = id(ls_slot_center_sub);
+
+            lv_label_set_text(lbl, snap.name.c_str());
+            lv_label_set_text(sub, subbuf);
+
+            lv_obj_set_style_bg_color(slot, lv_color_hex(cc.pill_bg), LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(slot, (!snap.state_valid || !snap.is_on) ? 90 : 128, LV_PART_MAIN);
+            lv_obj_set_style_border_color(slot, lv_color_hex(cc.accent), LV_PART_MAIN);
+            lv_obj_set_style_border_width(slot, 2, LV_PART_MAIN);
+            lv_obj_set_style_border_opa(slot, 255, LV_PART_MAIN);
+
+            lv_color_t title_col;
+            lv_color_t sub_col;
+            if (!snap.state_valid || !snap.is_on) {
+              title_col = lv_color_hex(0x6B7FCC);
+              sub_col = lv_color_hex(0x6B7FCC);
+              lv_obj_set_style_opa(img, layout.opa_icon > 0 ? layout.opa_icon : 96, LV_PART_MAIN);
+            } else if (cc.use_dynamic_text) {
+              title_col = text_color_for_bg(cc.pill_r, cc.pill_g, cc.pill_b);
+              sub_col = title_col;
+              lv_obj_set_style_opa(img, layout.opa_icon > 0 ? layout.opa_icon : 255, LV_PART_MAIN);
+            } else {
+              title_col = lv_color_hex(0xFDC003);
+              sub_col = lv_color_hex(0xFDC003);
+              lv_obj_set_style_opa(img, layout.opa_icon > 0 ? layout.opa_icon : 255, LV_PART_MAIN);
+            }
+            lv_obj_set_style_text_color(lbl, title_col, LV_PART_MAIN);
+            lv_obj_set_style_text_color(sub, sub_col, LV_PART_MAIN);
+            lv_obj_set_style_opa(lbl, layout.opa_text > 0 ? layout.opa_text : 255, LV_PART_MAIN);
+            lv_obj_set_style_opa(sub, layout.opa_text > 0 ? layout.opa_text : 255, LV_PART_MAIN);
+
+            int bx = layout.x - 10;
+            int by = layout.y + 12;
+            lv_obj_set_pos(id(ls_slot_center_bar), bx, by);
+            lv_obj_set_style_bg_color(id(ls_slot_center_bar), lv_color_hex(cc.accent), LV_PART_MAIN);
+            lv_obj_set_style_opa(id(ls_slot_center_bar), layout.opa_text > 0 ? layout.opa_text : 255, LV_PART_MAIN);
+          };
+
+          const size_t count = id(dial_lights_id).light_count();
+          const size_t active = id(dial_lights_id).active_index();
+          const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+
+          lv_obj_t *slots[5] = {
+            id(ls_slot_far_up), id(ls_slot_near_up), id(ls_slot_center),
+            id(ls_slot_near_dn), id(ls_slot_far_dn)
+          };
+          lv_obj_t *icons[5] = {
+            id(ls_slot_far_up_img), id(ls_slot_near_up_img), id(ls_slot_center_img),
+            id(ls_slot_near_dn_img), id(ls_slot_far_dn_img)
+          };
+          lv_obj_t *title_lbls[5] = {
+            id(ls_slot_far_up_lbl), id(ls_slot_near_up_lbl), id(ls_slot_center_lbl),
+            id(ls_slot_near_dn_lbl), id(ls_slot_far_dn_lbl)
+          };
+          lv_obj_t *dots[5] = {id(ls_dot_0), id(ls_dot_1), id(ls_dot_2), id(ls_dot_3), id(ls_dot_4)};
+
+          if (count == 0) {
+            for (int slot = 0; slot < 5; slot++) {
+              const auto layout = id(selector_carousel).compute_static_layout(slot, 54);
+              id(selector_carousel).apply_container_geometry(slot, layout);
+              lv_label_set_text(title_lbls[slot], "");
+              lv_obj_set_style_opa(title_lbls[slot], 0, LV_PART_MAIN);
+              lv_obj_set_style_opa(icons[slot], 0, LV_PART_MAIN);
+              lv_obj_set_style_bg_opa(slots[slot], LV_OPA_TRANSP, LV_PART_MAIN);
+            }
+            lv_label_set_text(id(ls_slot_center_sub), "");
+            lv_obj_set_style_opa(id(ls_slot_center_sub), 0, LV_PART_MAIN);
+            lv_obj_set_style_opa(id(ls_slot_center_bar), 0, LV_PART_MAIN);
+            for (int d = 0; d < 5; d++) {
+              lv_obj_add_flag(dots[d], LV_OBJ_FLAG_HIDDEN);
+            }
+            return;
+          }
+
+          for (int slot = 0; slot < 5; slot++) {
+            const auto layout = id(selector_carousel).compute_static_layout(slot, 54);
+            id(selector_carousel).apply_container_geometry(slot, layout);
+
+            size_t light_idx = 0;
+            if (resolve_light_index(count, active, OFFSETS[slot], light_idx)) {
+              if (slot == 2) {
+                paint_center(light_idx, layout);
+              } else {
+                paint_lateral(light_idx, slots[slot], icons[slot], title_lbls[slot], layout);
+              }
+            } else if (slot == 2) {
+              paint_center(active, layout);
+            } else {
+              paint_empty_lateral(slots[slot], icons[slot], title_lbls[slot], layout);
+            }
+          }
+
+          lv_obj_set_style_border_width(id(ls_slot_center), 0, LV_PART_MAIN);
+
+          const auto center_snap = id(dial_lights_id).card_snapshot_at(active);
+          const CardColors center_cc = colors_for_snapshot(center_snap);
+          uint32_t dot_accent = center_cc.accent;
+          if (!center_snap.state_valid || !center_snap.is_on) {
+            dot_accent = 0x576BFE;
+          }
+
+          if (count <= 5) {
+            for (int d = 0; d < 5; d++) {
+              if (d < static_cast<int>(count)) {
+                lv_obj_clear_flag(dots[d], LV_OBJ_FLAG_HIDDEN);
+                style_dot(dots[d], d == static_cast<int>(active), dot_accent);
+              } else {
+                lv_obj_add_flag(dots[d], LV_OBJ_FLAG_HIDDEN);
+              }
+            }
+          } else {
+            const int sel_dot = (count > 1) ? static_cast<int>(active * 4 / (count - 1)) : 0;
+            for (int d = 0; d < 5; d++) {
+              lv_obj_clear_flag(dots[d], LV_OBJ_FLAG_HIDDEN);
+              style_dot(dots[d], d == sel_dot, dot_accent);
+            }
+          }
 
   - id: open_light_selector
     then:
@@ -45,12 +376,17 @@ script:
 
   - id: light_selector_confirm
     then:
-      - lambda: |-
-          id(dial_lights_id).select_light(id(dial_lights_id).active_index());
-          ESP_LOGI("light_selector", "selected index=%u name=%s entity_id=%s",
-                   static_cast<unsigned>(id(dial_lights_id).active_index()), id(dial_lights_id).active_name().c_str(),
-                   id(dial_lights_id).active_entity_id().c_str());
-      - script.execute: open_selected_light
+      - if:
+          condition:
+            lambda: 'return id(dial_lights_id).light_count() > 0;'
+          then:
+            - lambda: |-
+                id(dial_lights_id).select_light(id(dial_lights_id).active_index());
+                ESP_LOGI("light_selector", "selected index=%u name=%s entity_id=%s",
+                         static_cast<unsigned>(id(dial_lights_id).active_index()),
+                         id(dial_lights_id).active_name().c_str(),
+                         id(dial_lights_id).active_entity_id().c_str());
+            - script.execute: open_selected_light
 
   - id: open_selected_light
     then:
@@ -132,31 +468,246 @@ lvgl:
       widgets:
         - obj:
             align: CENTER
-            width: 236
-            height: 236
-            radius: 118
+            width: 240
+            height: 240
+            radius: 120
+            clip_corner: true
             bg_color: col_light_bg
             bg_opa: COVER
-            border_width: 2
-            border_color: col_light_track
+            border_width: 0
+            scrollbar_mode: "OFF"
+            pad_all: 0
             widgets:
-              - label:
-                  id: lbl_light_selector_previous
-                  align: TOP_MID
-                  y: 36
-                  text: ""
-                  text_font: font_menu_item
-                  text_color: col_text_sec
-              - label:
-                  id: lbl_light_selector_current
-                  align: CENTER
-                  text: ""
-                  text_font: font_menu_center
-                  text_color: col_text_pri
-              - label:
-                  id: lbl_light_selector_next
-                  align: BOTTOM_MID
-                  y: -36
-                  text: ""
-                  text_font: font_menu_item
-                  text_color: col_text_sec
+              - obj:
+                  id: ls_stack
+                  align: TOP_LEFT
+                  x: 0
+                  y: 0
+                  width: 240
+                  height: 240
+                  bg_opa: TRANSP
+                  border_width: 0
+                  scrollbar_mode: "OFF"
+                  pad_all: 0
+                  clickable: false
+                  widgets:
+                    - obj:
+                        id: ls_slot_far_up
+                        align: TOP_MID
+                        y: 6
+                        width: 180
+                        height: 40
+                        bg_opa: TRANSP
+                        border_width: 0
+                        scrollbar_mode: "OFF"
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - image:
+                              id: ls_slot_far_up_img
+                              align: LEFT_MID
+                              x: 2
+                              src: menu_img_light
+                          - label:
+                              id: ls_slot_far_up_lbl
+                              align: LEFT_MID
+                              x: 38
+                              width: 130
+                              long_mode: DOT
+                              text_font: font_menu_item
+                              text_color: col_menu_dim
+                              text: ""
+                    - obj:
+                        id: ls_slot_near_up
+                        align: TOP_MID
+                        y: 42
+                        width: 180
+                        height: 40
+                        bg_opa: TRANSP
+                        border_width: 0
+                        scrollbar_mode: "OFF"
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - image:
+                              id: ls_slot_near_up_img
+                              align: LEFT_MID
+                              x: 2
+                              src: menu_img_light
+                          - label:
+                              id: ls_slot_near_up_lbl
+                              align: LEFT_MID
+                              x: 38
+                              width: 130
+                              long_mode: DOT
+                              text_font: font_menu_item
+                              text_color: col_menu_dim
+                              text: ""
+                    - obj:
+                        id: ls_slot_center_bar
+                        align: TOP_MID
+                        y: 108
+                        x: -96
+                        width: 6
+                        height: 32
+                        radius: 3
+                        bg_color: col_menu_accent
+                        bg_opa: TRANSP
+                        border_width: 0
+                        scrollbar_mode: "OFF"
+                        pad_all: 0
+                        clickable: false
+                    - obj:
+                        id: ls_slot_center
+                        align: TOP_MID
+                        y: 102
+                        width: 168
+                        height: 56
+                        radius: 28
+                        bg_color: col_menu_pill
+                        bg_opa: COVER
+                        border_width: 0
+                        scrollbar_mode: "OFF"
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - image:
+                              id: ls_slot_center_img
+                              align: LEFT_MID
+                              x: 14
+                              src: menu_img_light
+                          - label:
+                              id: ls_slot_center_lbl
+                              x: 54
+                              y: 6
+                              width: 106
+                              long_mode: DOT
+                              text_font: font_menu_item
+                              text_color: col_text_pri
+                              text: ""
+                          - label:
+                              id: ls_slot_center_sub
+                              x: 54
+                              y: 30
+                              width: 106
+                              long_mode: DOT
+                              text_font: font_menu_sub
+                              text_color: col_menu_val
+                              text: ""
+                    - obj:
+                        id: ls_slot_near_dn
+                        align: TOP_MID
+                        y: 162
+                        width: 180
+                        height: 40
+                        bg_opa: TRANSP
+                        border_width: 0
+                        scrollbar_mode: "OFF"
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - image:
+                              id: ls_slot_near_dn_img
+                              align: LEFT_MID
+                              x: 2
+                              src: menu_img_light
+                          - label:
+                              id: ls_slot_near_dn_lbl
+                              align: LEFT_MID
+                              x: 38
+                              width: 130
+                              long_mode: DOT
+                              text_font: font_menu_item
+                              text_color: col_menu_dim
+                              text: ""
+                    - obj:
+                        id: ls_slot_far_dn
+                        align: TOP_MID
+                        y: 198
+                        width: 180
+                        height: 40
+                        bg_opa: TRANSP
+                        border_width: 0
+                        scrollbar_mode: "OFF"
+                        pad_all: 0
+                        clickable: false
+                        widgets:
+                          - image:
+                              id: ls_slot_far_dn_img
+                              align: LEFT_MID
+                              x: 2
+                              src: menu_img_light
+                          - label:
+                              id: ls_slot_far_dn_lbl
+                              align: LEFT_MID
+                              x: 38
+                              width: 130
+                              long_mode: DOT
+                              text_font: font_menu_item
+                              text_color: col_menu_dim
+                              text: ""
+              - obj:
+                  id: ls_dot_0
+                  align: RIGHT_MID
+                  x: -10
+                  y: -28
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: ls_dot_1
+                  align: RIGHT_MID
+                  x: -10
+                  y: -14
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: ls_dot_2
+                  align: RIGHT_MID
+                  x: -10
+                  y: 0
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_accent
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: ls_dot_3
+                  align: RIGHT_MID
+                  x: -10
+                  y: 14
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
+              - obj:
+                  id: ls_dot_4
+                  align: RIGHT_MID
+                  x: -10
+                  y: 28
+                  width: 5
+                  height: 5
+                  radius: 3
+                  bg_color: col_menu_sdot_dim
+                  bg_opa: COVER
+                  border_width: 0
+                  clickable: false
+                  scrollbar_mode: "OFF"
