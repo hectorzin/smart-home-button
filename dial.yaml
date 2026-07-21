@@ -1,6 +1,7 @@
 packages:
   hardware:    !include src/main/hardware.yaml
   entities:    !include src/main/entities.yaml
+  dial_lights_sensors: !include src/main/dial_lights_sensors.yaml
   load_page:   !include src/pages/load.yaml
   clock_page:  !include src/pages/main.yaml
   menu_page:   !include src/pages/menu.yaml
@@ -11,17 +12,29 @@ packages:
   timer_page:  !include src/pages/timer.yaml
 
 external_components:
-  - source: github://hectorzin/smart-home-button@68c60c432dcad824c03288dfea4f6837a0104e4b
+  - source: github://hectorzin/smart-home-button@b151168e23254f31208a857b8db48898abc202be
     components: [dial_lights]
     refresh: 0s
 
 dial_lights:
   - entity_id: light.sofa
     name: Sofá
+    state_sensor: dial_light_sofa_state
+    modes_sensor: dial_light_sofa_modes
+    brightness_sensor: dial_light_sofa_brightness
+    color_sensor: dial_light_sofa_rgb
   - entity_id: light.mesa
     name: Mesa
+    state_sensor: dial_light_mesa_state
+    modes_sensor: dial_light_mesa_modes
+    brightness_sensor: dial_light_mesa_brightness
+    color_sensor: dial_light_mesa_rgb
   - entity_id: light.luces_jardin
     name: Jardín
+    state_sensor: dial_light_jardin_state
+    modes_sensor: dial_light_jardin_modes
+    brightness_sensor: dial_light_jardin_brightness
+    color_sensor: dial_light_jardin_rgb
 
 substitutions:
   timezone: Europe/Madrid

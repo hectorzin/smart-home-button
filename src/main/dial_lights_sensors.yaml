@@ -1,0 +1,70 @@
+text_sensor:
+  - platform: homeassistant
+    id: dial_light_sofa_state
+    entity_id: light.sofa
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_state
+    entity_id: light.mesa
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_state
+    entity_id: light.luces_jardin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_sofa_modes
+    entity_id: light.sofa
+    attribute: supported_color_modes
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_modes
+    entity_id: light.mesa
+    attribute: supported_color_modes
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_modes
+    entity_id: light.luces_jardin
+    attribute: supported_color_modes
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_sofa_rgb
+    entity_id: light.sofa
+    attribute: rgb_color
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_rgb
+    entity_id: light.mesa
+    attribute: rgb_color
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_rgb
+    entity_id: light.luces_jardin
+    attribute: rgb_color
+    internal: true
+
+sensor:
+  - platform: homeassistant
+    id: dial_light_sofa_brightness
+    entity_id: light.sofa
+    attribute: brightness
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_brightness
+    entity_id: light.mesa
+    attribute: brightness
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_brightness
+    entity_id: light.luces_jardin
+    attribute: brightness
+    internal: true

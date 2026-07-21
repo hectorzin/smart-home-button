@@ -27,6 +27,7 @@ script:
 
   - id: open_light_selector
     then:
+      - globals.set: {id: light_multilight_active, value: 'false'}
       - globals.set: {id: in_light_selector, value: 'true'}
       - globals.set: {id: in_menu, value: 'false'}
       - globals.set: {id: in_light, value: 'false'}
@@ -57,6 +58,46 @@ script:
       - lvgl.label.update:
           id: lbl_light_title
           text: !lambda 'return id(dial_lights_id).active_name().c_str();'
+      - lambda: |-
+          id(light_multilight_active) = true;
+          id(dial_lights_id).load_active_snapshot();
+
+          id(light_on) = false;
+          id(light_brightness) = 75;
+          id(light_supports_brightness) = false;
+          id(light_supports_rgb) = false;
+          id(light_color_r) = 169;
+          id(light_color_g) = 143;
+          id(light_color_b) = 255;
+          id(light_color_h) = 252;
+          id(light_color_h_prev) = 252;
+          id(light_user_adjusting) = false;
+          id(light_last_ha_brightness) = -1;
+          id(light_requested_brightness) = 75;
+          id(light_brightness_action_sent) = false;
+          id(light_ha_brightness_received_after_send) = false;
+
+          if (id(dial_lights_id).active_has_valid_state()) {
+            id(light_on) = id(dial_lights_id).active_is_on();
+          }
+          id(light_supports_brightness) = id(dial_lights_id).active_supports_brightness();
+          id(light_supports_rgb) = id(dial_lights_id).active_supports_rgb();
+
+          if (id(dial_lights_id).active_brightness_valid()) {
+            const int pct = id(dial_lights_id).active_brightness_percent();
+            id(light_brightness) = pct;
+            id(light_requested_brightness) = pct;
+            id(light_last_ha_brightness) = pct;
+          }
+
+          if (id(dial_lights_id).active_color_valid()) {
+            id(light_color_r) = id(dial_lights_id).active_color_r();
+            id(light_color_g) = id(dial_lights_id).active_color_g();
+            id(light_color_b) = id(dial_lights_id).active_color_b();
+            const int hue = id(dial_lights_id).active_color_h();
+            id(light_color_h) = hue;
+            id(light_color_h_prev) = hue;
+          }
       - script.execute: open_light
 
 lvgl:
