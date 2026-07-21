@@ -156,6 +156,15 @@ void DialLights::load_active_snapshot() {
     parse_color_modes(light.modes->state, light.supports_brightness, light.supports_rgb);
   }
 
+  ESP_LOGI("dial_lights",
+           "snapshot name='%s' on_state='%s' brightness_has=%s brightness=%f color_has=%s color_raw='%s'",
+           light.name.c_str(),
+           light.state != nullptr && light.state->has_state() ? light.state->state.c_str() : "",
+           light.brightness != nullptr && light.brightness->has_state() ? "yes" : "no",
+           light.brightness != nullptr && light.brightness->has_state() ? light.brightness->state : NAN,
+           light.color != nullptr && light.color->has_state() ? "yes" : "no",
+           light.color != nullptr && light.color->has_state() ? light.color->state.c_str() : "");
+
   if (light.brightness != nullptr && light.brightness->has_state()) {
     int percent = 0;
     if (parse_brightness_percent(light.brightness->state, percent)) {
@@ -175,6 +184,11 @@ void DialLights::load_active_snapshot() {
       light.color_b = b;
     }
   }
+
+  ESP_LOGI("dial_lights",
+           "snapshot parsed brightness_valid=%s brightness_pct=%d color_valid=%s rgb=%d,%d,%d hue=%d",
+           light.brightness_valid ? "yes" : "no", light.brightness_percent, light.color_valid ? "yes" : "no",
+           light.color_r, light.color_g, light.color_b, this->active_color_h());
 }
 
 const DialLights::LightEntry &DialLights::active_entry_() const { return this->lights_[this->active_index_]; }
