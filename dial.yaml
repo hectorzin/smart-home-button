@@ -20,12 +20,15 @@ dial_lights:
   - entity_id: light.sofa
     name: Sofá
     state_sensor: dial_light_sofa_state
+    modes_sensor: dial_light_sofa_modes
   - entity_id: light.mesa
     name: Mesa
     state_sensor: dial_light_mesa_state
+    modes_sensor: dial_light_mesa_modes
   - entity_id: light.luces_jardin
     name: Jardín
     state_sensor: dial_light_jardin_state
+    modes_sensor: dial_light_jardin_modes
 
 substitutions:
   timezone: Europe/Madrid

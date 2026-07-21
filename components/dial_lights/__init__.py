@@ -7,6 +7,7 @@ CODEOWNERS = []
 DEPENDENCIES = ["api", "text_sensor"]
 
 CONF_STATE_SENSOR = "state_sensor"
+CONF_MODES_SENSOR = "modes_sensor"
 
 dial_lights_ns = cg.esphome_ns.namespace("dial_lights")
 DialLights = dial_lights_ns.class_("DialLights", cg.Component)
@@ -16,6 +17,7 @@ LIGHT_SCHEMA = cv.Schema(
         cv.Required(CONF_ENTITY_ID): cv.string,
         cv.Required(CONF_NAME): cv.string,
         cv.Optional(CONF_STATE_SENSOR): cv.use_id(text_sensor.TextSensor),
+        cv.Optional(CONF_MODES_SENSOR): cv.use_id(text_sensor.TextSensor),
     }
 )
 
@@ -38,6 +40,9 @@ async def to_code(config):
         entity = light[CONF_ENTITY_ID]
         name = light[CONF_NAME]
         state = None
+        modes = None
         if CONF_STATE_SENSOR in light:
             state = await cg.get_variable(light[CONF_STATE_SENSOR])
-        cg.add(var.add_light(entity, name, state))
+        if CONF_MODES_SENSOR in light:
+            modes = await cg.get_variable(light[CONF_MODES_SENSOR])
+        cg.add(var.add_light(entity, name, state, modes))

@@ -12,7 +12,8 @@ namespace dial_lights {
 
 class DialLights : public Component {
  public:
-  void add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state = nullptr);
+  void add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state = nullptr,
+                 text_sensor::TextSensor *modes = nullptr);
   void setup() override;
 
   size_t light_count() const { return this->lights_.size(); }
@@ -26,6 +27,8 @@ class DialLights : public Component {
 
   bool active_has_valid_state() const;
   bool active_is_on() const;
+  bool active_supports_brightness() const;
+  bool active_supports_rgb() const;
 
  protected:
   struct LightEntry {
@@ -34,10 +37,14 @@ class DialLights : public Component {
     text_sensor::TextSensor *state{nullptr};
     bool state_valid{false};
     bool is_on{false};
+    text_sensor::TextSensor *modes{nullptr};
+    bool supports_brightness{false};
+    bool supports_rgb{false};
   };
 
   const LightEntry &active_entry_() const;
   void on_state_(size_t index, const std::string &value);
+  void on_modes_(size_t index, const std::string &value);
 
   std::vector<LightEntry> lights_;
   size_t active_index_{0};
