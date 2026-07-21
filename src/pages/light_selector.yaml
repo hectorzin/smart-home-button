@@ -58,6 +58,9 @@ script:
       - lvgl.label.update:
           id: lbl_light_title
           text: !lambda 'return id(dial_lights_id).active_name().c_str();'
+      - lvgl.label.update:
+          id: lbl_onoff_title
+          text: !lambda 'return id(dial_lights_id).active_name().c_str();'
       - lambda: |-
           id(light_multilight_active) = true;
           id(dial_lights_id).load_active_snapshot();
