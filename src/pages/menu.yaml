@@ -72,25 +72,25 @@ globals:
     initial_value: 'false'
 
 dial_carousel:
-  id: menu_carousel
-  slots:
-    - container: slot_far_up
-      icon: slot_far_up_img
-      title: slot_far_up_lbl
-    - container: slot_near_up
-      icon: slot_near_up_img
-      title: slot_near_up_lbl
-    - container: slot_center
-      icon: slot_center_img
-      title: slot_center_lbl
-    - container: slot_near_dn
-      icon: slot_near_dn_img
-      title: slot_near_dn_lbl
-    - container: slot_far_dn
-      icon: slot_far_dn_img
-      title: slot_far_dn_lbl
-  center_bar: slot_center_bar
-  center_sub: slot_center_sub
+  - id: menu_carousel
+    slots:
+      - container: slot_far_up
+        icon: slot_far_up_img
+        title: slot_far_up_lbl
+      - container: slot_near_up
+        icon: slot_near_up_img
+        title: slot_near_up_lbl
+      - container: slot_center
+        icon: slot_center_img
+        title: slot_center_lbl
+      - container: slot_near_dn
+        icon: slot_near_dn_img
+        title: slot_near_dn_lbl
+      - container: slot_far_dn
+        icon: slot_far_dn_img
+        title: slot_far_dn_lbl
+    center_bar: slot_center_bar
+    center_sub: slot_center_sub
 
 script:
   - id: open_menu

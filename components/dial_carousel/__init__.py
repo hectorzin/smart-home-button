@@ -7,6 +7,8 @@ CODEOWNERS = []
 DEPENDENCIES = ["lvgl"]
 AUTO_LOAD = ["lvgl"]
 
+MULTI_CONF = True
+
 CONF_SLOTS = "slots"
 CONF_CONTAINER = "container"
 CONF_ICON = "icon"

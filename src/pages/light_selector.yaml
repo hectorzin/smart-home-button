@@ -7,25 +7,25 @@ globals:
     initial_value: '0'
 
 dial_carousel:
-  id: selector_carousel
-  slots:
-    - container: ls_slot_far_up
-      icon: ls_slot_far_up_img
-      title: ls_slot_far_up_lbl
-    - container: ls_slot_near_up
-      icon: ls_slot_near_up_img
-      title: ls_slot_near_up_lbl
-    - container: ls_slot_center
-      icon: ls_slot_center_img
-      title: ls_slot_center_lbl
-    - container: ls_slot_near_dn
-      icon: ls_slot_near_dn_img
-      title: ls_slot_near_dn_lbl
-    - container: ls_slot_far_dn
-      icon: ls_slot_far_dn_img
-      title: ls_slot_far_dn_lbl
-  center_bar: ls_slot_center_bar
-  center_sub: ls_slot_center_sub
+  - id: selector_carousel
+    slots:
+      - container: ls_slot_far_up
+        icon: ls_slot_far_up_img
+        title: ls_slot_far_up_lbl
+      - container: ls_slot_near_up
+        icon: ls_slot_near_up_img
+        title: ls_slot_near_up_lbl
+      - container: ls_slot_center
+        icon: ls_slot_center_img
+        title: ls_slot_center_lbl
+      - container: ls_slot_near_dn
+        icon: ls_slot_near_dn_img
+        title: ls_slot_near_dn_lbl
+      - container: ls_slot_far_dn
+        icon: ls_slot_far_dn_img
+        title: ls_slot_far_dn_lbl
+    center_bar: ls_slot_center_bar
+    center_sub: ls_slot_center_sub
 
 script:
   - id: light_selector_scroll_up
