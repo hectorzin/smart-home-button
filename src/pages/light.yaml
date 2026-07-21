@@ -321,7 +321,6 @@ script:
     then:
       - globals.set: {id: in_light, value: 'true'}
       - globals.set: {id: in_menu, value: 'false'}
-      - script.execute: refresh_light_arc
       - lvgl.page.show:
           id: page_light
           animation: MOVE_LEFT
