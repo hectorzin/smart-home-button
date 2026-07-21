@@ -52,7 +52,7 @@ font:
     id: font_cp_mode
     size: 11
     bpp: 4
-    glyphs: "COLORWHITE "
+    glyphs: "COLRWHITE "
 
 color:
   - id: col_light_bg
