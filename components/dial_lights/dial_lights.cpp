@@ -43,9 +43,15 @@ void DialLights::setup() {
     auto &light = this->lights_[i];
     if (light.state != nullptr) {
       light.state->add_on_state_callback([this, i](const std::string &value) { this->on_state_(i, value); });
+      if (light.state->has_state()) {
+        this->on_state_(i, light.state->state);
+      }
     }
     if (light.modes != nullptr) {
       light.modes->add_on_state_callback([this, i](const std::string &value) { this->on_modes_(i, value); });
+      if (light.modes->has_state()) {
+        this->on_modes_(i, light.modes->state);
+      }
     }
   }
 }
