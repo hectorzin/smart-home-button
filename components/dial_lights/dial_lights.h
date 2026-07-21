@@ -15,6 +15,7 @@ class DialLights : public Component {
   void add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state = nullptr,
                  text_sensor::TextSensor *modes = nullptr);
   void setup() override;
+  void load_active_snapshot();
 
   size_t light_count() const { return this->lights_.size(); }
   size_t active_index() const { return this->active_index_; }

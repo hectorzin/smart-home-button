@@ -2,8 +2,12 @@
 
 #include <cctype>
 
+#include "esphome/core/log.h"
+
 namespace esphome {
 namespace dial_lights {
+
+static const char *const TAG = "dial_lights";
 
 namespace {
 const std::string EMPTY_STRING;
@@ -18,10 +22,11 @@ void parse_color_modes(const std::string &raw, bool &supports_brightness, bool &
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
       token += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     } else if (!token.empty()) {
-      if (token == "brightness" || token == "color_temp" || token == "rgb" || token == "rgbw" || token == "rgbww") {
+      if (token == "brightness" || token == "color_temp" || token == "hs" || token == "xy" || token == "rgb" ||
+          token == "rgbw" || token == "rgbww") {
         supports_brightness = true;
       }
-      if (token == "rgb" || token == "rgbw" || token == "rgbww") {
+      if (token == "rgb" || token == "rgbw" || token == "rgbww" || token == "hs" || token == "xy") {
         supports_rgb = true;
       }
       token.clear();
@@ -35,6 +40,12 @@ void DialLights::add_light(
     const std::string &name,
     text_sensor::TextSensor *state,
     text_sensor::TextSensor *modes) {
+  for (const auto &existing : this->lights_) {
+    if (existing.entity_id == entity_id) {
+      ESP_LOGW(TAG, "Duplicate light entity_id ignored: %s", entity_id.c_str());
+      return;
+    }
+  }
   this->lights_.push_back({entity_id, name, state, false, false, modes, false, false});
 }
 
@@ -53,6 +64,32 @@ void DialLights::setup() {
         this->on_modes_(i, light.modes->state);
       }
     }
+  }
+}
+
+void DialLights::load_active_snapshot() {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return;
+
+  auto &light = this->lights_[this->active_index_];
+
+  light.state_valid = false;
+  light.is_on = false;
+  if (light.state != nullptr && light.state->has_state()) {
+    const std::string &value = light.state->state;
+    if (value == "on") {
+      light.state_valid = true;
+      light.is_on = true;
+    } else if (value == "off") {
+      light.state_valid = true;
+      light.is_on = false;
+    }
+  }
+
+  light.supports_brightness = false;
+  light.supports_rgb = false;
+  if (light.modes != nullptr && light.modes->has_state()) {
+    parse_color_modes(light.modes->state, light.supports_brightness, light.supports_rgb);
   }
 }
 

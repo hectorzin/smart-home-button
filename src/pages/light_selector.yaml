@@ -60,6 +60,7 @@ script:
           text: !lambda 'return id(dial_lights_id).active_name().c_str();'
       - lambda: |-
           id(light_multilight_active) = true;
+          id(dial_lights_id).load_active_snapshot();
 
           id(light_on) = false;
           id(light_brightness) = 75;
@@ -79,12 +80,8 @@ script:
           if (id(dial_lights_id).active_has_valid_state()) {
             id(light_on) = id(dial_lights_id).active_is_on();
           }
-
-          id(light_supports_brightness) =
-              id(dial_lights_id).active_supports_brightness();
-
-          id(light_supports_rgb) =
-              id(dial_lights_id).active_supports_rgb();
+          id(light_supports_brightness) = id(dial_lights_id).active_supports_brightness();
+          id(light_supports_rgb) = id(dial_lights_id).active_supports_rgb();
       - script.execute: open_light
 
 lvgl:
