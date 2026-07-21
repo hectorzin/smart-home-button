@@ -817,6 +817,7 @@ script:
           lv_obj_set_align(id(light_title_pill), LV_ALIGN_TOP_LEFT);
           lv_obj_set_x(id(light_title_pill), 81);
           lv_obj_set_y(id(light_title_pill), 143);
+          lv_obj_clear_flag(id(btn_dengguang), LV_OBJ_FLAG_HIDDEN);
 
           int pct = id(light_brightness);
           static char buf[4];
