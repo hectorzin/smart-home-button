@@ -147,15 +147,14 @@ bool DialCarousel::start_animation(CarouselDirection direction, int pill_shift_m
   this->on_ready_ = on_ready;
   this->on_ready_context_ = context;
 
-  static lv_anim_t anim;
-  lv_anim_init(&anim);
-  lv_anim_set_var(&anim, this);
-  lv_anim_set_values(&anim, 0, 100);
-  lv_anim_set_time(&anim, 200);
-  lv_anim_set_path_cb(&anim, lv_anim_path_ease_in_out);
-  lv_anim_set_exec_cb(&anim, DialCarousel::anim_exec_cb_);
-  lv_anim_set_ready_cb(&anim, DialCarousel::anim_ready_cb_);
-  lv_anim_start(&anim);
+  lv_anim_init(&this->anim_);
+  lv_anim_set_var(&this->anim_, this);
+  lv_anim_set_values(&this->anim_, 0, 100);
+  lv_anim_set_time(&this->anim_, 200);
+  lv_anim_set_path_cb(&this->anim_, lv_anim_path_ease_in_out);
+  lv_anim_set_exec_cb(&this->anim_, DialCarousel::anim_exec_cb_);
+  lv_anim_set_ready_cb(&this->anim_, DialCarousel::anim_ready_cb_);
+  lv_anim_start(&this->anim_);
   return true;
 }
 

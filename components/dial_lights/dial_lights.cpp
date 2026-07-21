@@ -584,5 +584,30 @@ const std::string &DialLights::name_at(size_t index) const {
   return this->lights_[index % this->lights_.size()].name;
 }
 
+LightCardSnapshot DialLights::card_snapshot_at(size_t index) const {
+  LightCardSnapshot snap;
+  if (this->lights_.empty() || index >= this->lights_.size())
+    return snap;
+
+  const auto &light = this->lights_[index];
+  snap.name = light.name;
+  snap.state_valid = light.state_valid;
+  snap.is_on = light.is_on;
+  snap.supports_brightness = light.supports_brightness;
+  snap.supports_rgb = light.supports_rgb;
+  snap.supports_color_temp = light.supports_color_temp;
+  snap.brightness_valid = light.brightness_valid;
+  snap.brightness_percent = light.brightness_percent;
+  snap.color_valid = light.color_valid;
+  snap.color_r = light.color_r;
+  snap.color_g = light.color_g;
+  snap.color_b = light.color_b;
+  snap.color_mode_valid = light.color_mode_valid;
+  snap.is_color_temp_mode = light.is_color_temp_mode;
+  snap.color_temp_valid = light.color_temp_valid;
+  snap.color_temp_kelvin = light.color_temp_kelvin_value;
+  return snap;
+}
+
 }  // namespace dial_lights
 }  // namespace esphome

@@ -11,6 +11,25 @@
 namespace esphome {
 namespace dial_lights {
 
+struct LightCardSnapshot {
+  std::string name;
+  bool state_valid{false};
+  bool is_on{false};
+  bool supports_brightness{false};
+  bool supports_rgb{false};
+  bool supports_color_temp{false};
+  bool brightness_valid{false};
+  int brightness_percent{0};
+  bool color_valid{false};
+  int color_r{0};
+  int color_g{0};
+  int color_b{0};
+  bool color_mode_valid{false};
+  bool is_color_temp_mode{false};
+  bool color_temp_valid{false};
+  int color_temp_kelvin{0};
+};
+
 class DialLights : public Component {
  public:
   void add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state = nullptr,
@@ -29,6 +48,7 @@ class DialLights : public Component {
   const std::string &active_name() const;
   const std::string &active_entity_id() const;
   const std::string &name_at(size_t index) const;
+  LightCardSnapshot card_snapshot_at(size_t index) const;
 
   bool active_has_valid_state() const;
   bool active_is_on() const;

@@ -54,6 +54,7 @@ class DialCarousel : public Component {
   bool animating_{false};
   CarouselDirection anim_direction_{CarouselDirection::UP};
   int anim_pill_shift_max_{54};
+  lv_anim_t anim_{};
   void (*on_ready_)(void *){nullptr};
   void *on_ready_context_{nullptr};
 
