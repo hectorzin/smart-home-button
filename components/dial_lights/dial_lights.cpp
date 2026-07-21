@@ -7,8 +7,11 @@ namespace {
 const std::string EMPTY_STRING;
 }
 
-void DialLights::add_light(const std::string &entity_id, const std::string &name) {
-  this->lights_.push_back({entity_id, name});
+void DialLights::add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state) {
+  this->lights_.push_back({entity_id, name, state});
+}
+
+void DialLights::setup() {
 }
 
 void DialLights::select_light(size_t index) {

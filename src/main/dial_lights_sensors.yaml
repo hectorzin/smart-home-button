@@ -1,0 +1,15 @@
+text_sensor:
+  - platform: homeassistant
+    id: dial_light_sofa_state
+    entity_id: light.sofa
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_state
+    entity_id: light.mesa
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_state
+    entity_id: light.luces_jardin
+    internal: true

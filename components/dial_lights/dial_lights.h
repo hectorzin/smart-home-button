@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/core/component.h"
 
 namespace esphome {
@@ -11,7 +12,8 @@ namespace dial_lights {
 
 class DialLights : public Component {
  public:
-  void add_light(const std::string &entity_id, const std::string &name);
+  void add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state = nullptr);
+  void setup() override;
 
   size_t light_count() const { return this->lights_.size(); }
   size_t active_index() const { return this->active_index_; }
@@ -23,12 +25,13 @@ class DialLights : public Component {
   const std::string &name_at(size_t index) const;
 
  protected:
-  struct LightMetadata {
+  struct LightEntry {
     std::string entity_id;
     std::string name;
+    text_sensor::TextSensor *state{nullptr};
   };
 
-  std::vector<LightMetadata> lights_;
+  std::vector<LightEntry> lights_;
   size_t active_index_{0};
 };
 

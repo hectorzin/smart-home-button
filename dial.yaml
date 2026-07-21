@@ -1,6 +1,7 @@
 packages:
   hardware:    !include src/main/hardware.yaml
   entities:    !include src/main/entities.yaml
+  dial_lights_sensors: !include src/main/dial_lights_sensors.yaml
   load_page:   !include src/pages/load.yaml
   clock_page:  !include src/pages/main.yaml
   menu_page:   !include src/pages/menu.yaml
@@ -18,10 +19,13 @@ external_components:
 dial_lights:
   - entity_id: light.sofa
     name: Sofá
+    state_sensor: dial_light_sofa_state
   - entity_id: light.mesa
     name: Mesa
+    state_sensor: dial_light_mesa_state
   - entity_id: light.luces_jardin
     name: Jardín
+    state_sensor: dial_light_jardin_state
 
 substitutions:
   timezone: Europe/Madrid
