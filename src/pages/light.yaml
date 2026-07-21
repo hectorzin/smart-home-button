@@ -783,10 +783,13 @@ script:
             lv_obj_add_flag(id(lbl_brightness_pct), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(id(btn_dengguang), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_add_flag(id(light_title_pill), LV_OBJ_FLAG_HIDDEN);
-            lv_obj_clear_flag(id(lbl_onoff_title), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(id(light_title_pill), LV_OBJ_FLAG_HIDDEN);
             lv_obj_clear_flag(id(onoff_main_btn), LV_OBJ_FLAG_HIDDEN);
-            lv_label_set_text(id(lbl_onoff_title), lv_label_get_text(id(lbl_light_title)));
+            lv_obj_set_align(id(light_title_pill), LV_ALIGN_CENTER);
+            lv_obj_set_x(id(light_title_pill), 0);
+            lv_obj_set_y(id(light_title_pill), 79);
+            lv_color_t tc = lv_color_make(id(light_color_r), id(light_color_g), id(light_color_b));
+            lv_obj_set_style_text_color(id(lbl_light_title), tc, LV_STATE_DEFAULT);
             if (id(light_on)) {
               lv_label_set_text(id(lbl_onoff_state), "ON");
               lv_obj_set_style_bg_color(id(onoff_main_btn), lv_color_hex(0x282729), LV_STATE_DEFAULT);
@@ -796,7 +799,6 @@ script:
               lv_obj_set_style_shadow_color(id(onoff_main_btn), lv_color_hex(0xA98FFF), LV_STATE_DEFAULT);
               lv_obj_set_style_shadow_opa(id(onoff_main_btn), LV_OPA_40, LV_STATE_DEFAULT);
               lv_obj_set_style_text_color(id(lbl_onoff_state), lv_color_hex(0xA98FFF), LV_STATE_DEFAULT);
-              lv_obj_set_style_text_color(id(lbl_onoff_title), lv_color_hex(0xD2A848), LV_STATE_DEFAULT);
             } else {
               lv_label_set_text(id(lbl_onoff_state), "OFF");
               lv_obj_set_style_bg_color(id(onoff_main_btn), lv_color_hex(0x000000), LV_STATE_DEFAULT);
@@ -806,14 +808,15 @@ script:
               lv_obj_set_style_shadow_color(id(onoff_main_btn), lv_color_hex(0x262626), LV_STATE_DEFAULT);
               lv_obj_set_style_shadow_opa(id(onoff_main_btn), LV_OPA_20, LV_STATE_DEFAULT);
               lv_obj_set_style_text_color(id(lbl_onoff_state), lv_color_hex(0x282729), LV_STATE_DEFAULT);
-              lv_obj_set_style_text_color(id(lbl_onoff_title), lv_color_hex(0x282729), LV_STATE_DEFAULT);
             }
             return;
           }
 
-          lv_obj_add_flag(id(lbl_onoff_title), LV_OBJ_FLAG_HIDDEN);
           lv_obj_add_flag(id(onoff_main_btn), LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(id(light_title_pill), LV_OBJ_FLAG_HIDDEN);
+          lv_obj_set_align(id(light_title_pill), LV_ALIGN_TOP_LEFT);
+          lv_obj_set_x(id(light_title_pill), 81);
+          lv_obj_set_y(id(light_title_pill), 143);
 
           int pct = id(light_brightness);
           static char buf[4];
@@ -1019,18 +1022,6 @@ lvgl:
                         src: light_img_dengguang
                         align: CENTER
                         clickable: false
-
-              - label:
-                  id: lbl_onoff_title
-                  align: TOP_MID
-                  x: 0
-                  y: 28
-                  width: 220
-                  text: "LIGHT"
-                  text_font: font_menu_item
-                  text_color: col_light_label_text
-                  text_align: CENTER
-                  hidden: true
 
               - obj:
                   id: onoff_main_btn
