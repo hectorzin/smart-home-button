@@ -114,6 +114,10 @@ globals:
   - id: light_ha_brightness_received_after_send
     type: bool
     initial_value: 'false'
+  - id: light_multilight_active
+    type: bool
+    restore_value: no
+    initial_value: 'false'
 
 text_sensor:
   - platform: homeassistant
@@ -121,9 +125,13 @@ text_sensor:
     entity_id: ${light_entity}
     internal: true
     on_value:
-      - lambda: |-
-          id(light_on) = x == "on";
-      - script.execute: refresh_light_arc
+      - if:
+          condition:
+            lambda: 'return !id(light_multilight_active);'
+          then:
+            - lambda: |-
+                id(light_on) = x == "on";
+            - script.execute: refresh_light_arc
 
   - platform: homeassistant
     id: ha_light_rgb_color
@@ -131,27 +139,31 @@ text_sensor:
     attribute: rgb_color
     internal: true
     on_value:
-      - lambda: |-
-          int r, g, b;
-          if (sscanf(x.c_str(), "[%d, %d, %d]", &r, &g, &b) != 3) return;
-          id(light_color_r) = std::max(0, std::min(255, r));
-          id(light_color_g) = std::max(0, std::min(255, g));
-          id(light_color_b) = std::max(0, std::min(255, b));
-          float rf = id(light_color_r) / 255.0f;
-          float gf = id(light_color_g) / 255.0f;
-          float bf = id(light_color_b) / 255.0f;
-          float maxc = std::max(rf, std::max(gf, bf));
-          float minc = std::min(rf, std::min(gf, bf));
-          float delta = maxc - minc;
-          float hue = 0.0f;
-          if (delta > 0.0001f) {
-            if (maxc == rf) hue = 60.0f * fmodf((gf - bf) / delta, 6.0f);
-            else if (maxc == gf) hue = 60.0f * (((bf - rf) / delta) + 2.0f);
-            else hue = 60.0f * (((rf - gf) / delta) + 4.0f);
-          }
-          if (hue < 0.0f) hue += 360.0f;
-          id(light_color_h) = (int)(hue + 0.5f) % 360;
-      - script.execute: refresh_light_arc
+      - if:
+          condition:
+            lambda: 'return !id(light_multilight_active);'
+          then:
+            - lambda: |-
+                int r, g, b;
+                if (sscanf(x.c_str(), "[%d, %d, %d]", &r, &g, &b) != 3) return;
+                id(light_color_r) = std::max(0, std::min(255, r));
+                id(light_color_g) = std::max(0, std::min(255, g));
+                id(light_color_b) = std::max(0, std::min(255, b));
+                float rf = id(light_color_r) / 255.0f;
+                float gf = id(light_color_g) / 255.0f;
+                float bf = id(light_color_b) / 255.0f;
+                float maxc = std::max(rf, std::max(gf, bf));
+                float minc = std::min(rf, std::min(gf, bf));
+                float delta = maxc - minc;
+                float hue = 0.0f;
+                if (delta > 0.0001f) {
+                  if (maxc == rf) hue = 60.0f * fmodf((gf - bf) / delta, 6.0f);
+                  else if (maxc == gf) hue = 60.0f * (((bf - rf) / delta) + 2.0f);
+                  else hue = 60.0f * (((rf - gf) / delta) + 4.0f);
+                }
+                if (hue < 0.0f) hue += 360.0f;
+                id(light_color_h) = (int)(hue + 0.5f) % 360;
+            - script.execute: refresh_light_arc
 
   - platform: homeassistant
     id: ha_light_color_modes
@@ -159,17 +171,21 @@ text_sensor:
     attribute: supported_color_modes
     internal: true
     on_value:
-      - lambda: |-
-          id(light_supports_rgb) = x.find("rgb") != std::string::npos;
-          id(light_supports_brightness) =
-              id(light_supports_rgb) || x.find("brightness") != std::string::npos ||
-              x.find("color_temp") != std::string::npos || x.find("hs") != std::string::npos ||
-              x.find("xy") != std::string::npos;
-          ESP_LOGI("light_ha", "entity=%s supported_color_modes=%s brightness=%s rgb=%s",
-                   "${light_entity}", x.c_str(),
-                   id(light_supports_brightness) ? "yes" : "no",
-                   id(light_supports_rgb) ? "yes" : "no");
-      - script.execute: refresh_light_arc
+      - if:
+          condition:
+            lambda: 'return !id(light_multilight_active);'
+          then:
+            - lambda: |-
+                id(light_supports_rgb) = x.find("rgb") != std::string::npos;
+                id(light_supports_brightness) =
+                    id(light_supports_rgb) || x.find("brightness") != std::string::npos ||
+                    x.find("color_temp") != std::string::npos || x.find("hs") != std::string::npos ||
+                    x.find("xy") != std::string::npos;
+                ESP_LOGI("light_ha", "entity=%s supported_color_modes=%s brightness=%s rgb=%s",
+                         "${light_entity}", x.c_str(),
+                         id(light_supports_brightness) ? "yes" : "no",
+                         id(light_supports_rgb) ? "yes" : "no");
+            - script.execute: refresh_light_arc
 
 sensor:
   - platform: homeassistant
@@ -178,27 +194,31 @@ sensor:
     attribute: brightness
     internal: true
     on_value:
-      - lambda: |-
-          if (x != x) return;
-          int brightness = (int)(x * 100.0f / 255.0f + 0.5f);
-          id(light_last_ha_brightness) = std::max(0, std::min(100, brightness));
-          if (id(light_user_adjusting)) {
-            if (id(light_brightness_action_sent)) {
-              id(light_ha_brightness_received_after_send) = true;
-              ESP_LOGI("light_ha", "stored HA brightness=%d after local send",
-                       id(light_last_ha_brightness));
-            } else {
-              ESP_LOGI("light_ha", "ignored pre-send HA brightness=%d while local adjustment is active",
-                       id(light_last_ha_brightness));
-            }
-            return;
-          }
-          id(light_brightness) = id(light_last_ha_brightness);
       - if:
           condition:
-            lambda: 'return !id(light_user_adjusting);'
+            lambda: 'return !id(light_multilight_active);'
           then:
-            - script.execute: refresh_light_arc
+            - lambda: |-
+                if (x != x) return;
+                int brightness = (int)(x * 100.0f / 255.0f + 0.5f);
+                id(light_last_ha_brightness) = std::max(0, std::min(100, brightness));
+                if (id(light_user_adjusting)) {
+                  if (id(light_brightness_action_sent)) {
+                    id(light_ha_brightness_received_after_send) = true;
+                    ESP_LOGI("light_ha", "stored HA brightness=%d after local send",
+                             id(light_last_ha_brightness));
+                  } else {
+                    ESP_LOGI("light_ha", "ignored pre-send HA brightness=%d while local adjustment is active",
+                             id(light_last_ha_brightness));
+                  }
+                  return;
+                }
+                id(light_brightness) = id(light_last_ha_brightness);
+            - if:
+                condition:
+                  lambda: 'return !id(light_user_adjusting);'
+                then:
+                  - script.execute: refresh_light_arc
 
 script:
   - id: send_light_turn_on
@@ -310,6 +330,7 @@ script:
     then:
       - globals.set: {id: in_light, value: 'false'}
       - globals.set: {id: in_colorpicker, value: 'false'}
+      - globals.set: {id: light_multilight_active, value: 'false'}
       - script.execute: open_menu
 
   - id: toggle_light_onoff
