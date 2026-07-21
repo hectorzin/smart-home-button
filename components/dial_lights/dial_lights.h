@@ -15,7 +15,9 @@ class DialLights : public Component {
  public:
   void add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state = nullptr,
                  text_sensor::TextSensor *modes = nullptr, sensor::Sensor *brightness = nullptr,
-                 text_sensor::TextSensor *color = nullptr);
+                 text_sensor::TextSensor *color = nullptr, text_sensor::TextSensor *color_mode = nullptr,
+                 sensor::Sensor *color_temp_kelvin = nullptr, sensor::Sensor *min_color_temp_kelvin = nullptr,
+                 sensor::Sensor *max_color_temp_kelvin = nullptr);
   void setup() override;
   void load_active_snapshot();
 
@@ -32,6 +34,7 @@ class DialLights : public Component {
   bool active_is_on() const;
   bool active_supports_brightness() const;
   bool active_supports_rgb() const;
+  bool active_supports_color_temp() const;
   bool active_brightness_valid() const;
   int active_brightness_percent() const;
   bool active_color_valid() const;
@@ -39,6 +42,12 @@ class DialLights : public Component {
   int active_color_g() const;
   int active_color_b() const;
   int active_color_h() const;
+  bool active_color_mode_valid() const;
+  bool active_is_color_temp_mode() const;
+  bool active_color_temp_valid() const;
+  int active_color_temp_kelvin() const;
+  int active_min_color_temp_kelvin() const;
+  int active_max_color_temp_kelvin() const;
 
  protected:
   struct LightEntry {
@@ -50,6 +59,7 @@ class DialLights : public Component {
     text_sensor::TextSensor *modes{nullptr};
     bool supports_brightness{false};
     bool supports_rgb{false};
+    bool supports_color_temp{false};
     sensor::Sensor *brightness{nullptr};
     bool brightness_valid{false};
     int brightness_percent{75};
@@ -58,6 +68,18 @@ class DialLights : public Component {
     int color_r{169};
     int color_g{143};
     int color_b{255};
+    text_sensor::TextSensor *color_mode{nullptr};
+    bool color_mode_valid{false};
+    bool is_color_temp_mode{false};
+    sensor::Sensor *color_temp_kelvin{nullptr};
+    bool color_temp_valid{false};
+    int color_temp_kelvin_value{4000};
+    sensor::Sensor *min_color_temp_kelvin{nullptr};
+    bool min_color_temp_kelvin_valid{false};
+    int min_color_temp_kelvin_value{2000};
+    sensor::Sensor *max_color_temp_kelvin{nullptr};
+    bool max_color_temp_kelvin_valid{false};
+    int max_color_temp_kelvin_value{6500};
   };
 
   const LightEntry &active_entry_() const;
@@ -65,6 +87,10 @@ class DialLights : public Component {
   void on_modes_(size_t index, const std::string &value);
   void on_brightness_(size_t index, float value);
   void on_color_(size_t index, const std::string &value);
+  void on_color_mode_(size_t index, const std::string &value);
+  void on_color_temp_kelvin_(size_t index, float value);
+  void on_min_color_temp_kelvin_(size_t index, float value);
+  void on_max_color_temp_kelvin_(size_t index, float value);
 
   std::vector<LightEntry> lights_;
   size_t active_index_{0};

@@ -13,10 +13,14 @@ static const char *const TAG = "dial_lights";
 
 namespace {
 const std::string EMPTY_STRING;
+constexpr int DEFAULT_MIN_KELVIN = 2000;
+constexpr int DEFAULT_MAX_KELVIN = 6500;
 
-void parse_color_modes(const std::string &raw, bool &supports_brightness, bool &supports_rgb) {
+void parse_color_modes(const std::string &raw, bool &supports_brightness, bool &supports_rgb,
+                       bool &supports_color_temp) {
   supports_brightness = false;
   supports_rgb = false;
+  supports_color_temp = false;
 
   std::string token;
   for (size_t i = 0; i <= raw.size(); i++) {
@@ -30,6 +34,9 @@ void parse_color_modes(const std::string &raw, bool &supports_brightness, bool &
       }
       if (token == "rgb" || token == "rgbw" || token == "rgbww" || token == "hs" || token == "xy") {
         supports_rgb = true;
+      }
+      if (token == "color_temp") {
+        supports_color_temp = true;
       }
       token.clear();
     }
@@ -143,18 +150,81 @@ int rgb_to_hue(int r, int g, int b) {
     hue += 360.0f;
   return static_cast<int>(hue + 0.5f) % 360;
 }
+
+bool parse_kelvin_value(float raw, int &kelvin) {
+  if (!std::isfinite(raw) || raw <= 0.0f)
+    return false;
+  kelvin = static_cast<int>(raw + 0.5f);
+  if (kelvin < 1000)
+    kelvin = 1000;
+  else if (kelvin > 100000)
+    kelvin = 100000;
+  return true;
+}
+
+void sanitize_kelvin_range(int &min_k, int &max_k) {
+  if (min_k <= 0)
+    min_k = DEFAULT_MIN_KELVIN;
+  if (max_k <= 0)
+    max_k = DEFAULT_MAX_KELVIN;
+  if (min_k > max_k) {
+    const int tmp = min_k;
+    min_k = max_k;
+    max_k = tmp;
+  }
+  if (max_k - min_k < 1)
+    max_k = min_k + 1;
+}
+
+int clamp_kelvin(int kelvin, int min_k, int max_k) {
+  sanitize_kelvin_range(min_k, max_k);
+  if (kelvin < min_k)
+    return min_k;
+  if (kelvin > max_k)
+    return max_k;
+  return kelvin;
+}
 }  // namespace
 
 void DialLights::add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state,
-                           text_sensor::TextSensor *modes, sensor::Sensor *brightness, text_sensor::TextSensor *color) {
+                           text_sensor::TextSensor *modes, sensor::Sensor *brightness, text_sensor::TextSensor *color,
+                           text_sensor::TextSensor *color_mode, sensor::Sensor *color_temp_kelvin,
+                           sensor::Sensor *min_color_temp_kelvin, sensor::Sensor *max_color_temp_kelvin) {
   for (const auto &existing : this->lights_) {
     if (existing.entity_id == entity_id) {
       ESP_LOGW(TAG, "Duplicate light entity_id ignored: %s", entity_id.c_str());
       return;
     }
   }
-  this->lights_.push_back({entity_id, name, state, false, false, modes, false, false, brightness, false, 75, color,
-                           false, 169, 143, 255});
+  this->lights_.push_back({entity_id,
+                           name,
+                           state,
+                           false,
+                           false,
+                           modes,
+                           false,
+                           false,
+                           false,
+                           brightness,
+                           false,
+                           75,
+                           color,
+                           false,
+                           169,
+                           143,
+                           255,
+                           color_mode,
+                           false,
+                           false,
+                           color_temp_kelvin,
+                           false,
+                           4000,
+                           min_color_temp_kelvin,
+                           false,
+                           DEFAULT_MIN_KELVIN,
+                           max_color_temp_kelvin,
+                           false,
+                           DEFAULT_MAX_KELVIN});
 }
 
 void DialLights::setup() {
@@ -184,6 +254,33 @@ void DialLights::setup() {
         this->on_color_(i, light.color->state);
       }
     }
+    if (light.color_mode != nullptr) {
+      light.color_mode->add_on_state_callback([this, i](const std::string &value) { this->on_color_mode_(i, value); });
+      if (light.color_mode->has_state()) {
+        this->on_color_mode_(i, light.color_mode->state);
+      }
+    }
+    if (light.color_temp_kelvin != nullptr) {
+      light.color_temp_kelvin->add_on_state_callback(
+          [this, i](float value) { this->on_color_temp_kelvin_(i, value); });
+      if (light.color_temp_kelvin->has_state()) {
+        this->on_color_temp_kelvin_(i, light.color_temp_kelvin->state);
+      }
+    }
+    if (light.min_color_temp_kelvin != nullptr) {
+      light.min_color_temp_kelvin->add_on_state_callback(
+          [this, i](float value) { this->on_min_color_temp_kelvin_(i, value); });
+      if (light.min_color_temp_kelvin->has_state()) {
+        this->on_min_color_temp_kelvin_(i, light.min_color_temp_kelvin->state);
+      }
+    }
+    if (light.max_color_temp_kelvin != nullptr) {
+      light.max_color_temp_kelvin->add_on_state_callback(
+          [this, i](float value) { this->on_max_color_temp_kelvin_(i, value); });
+      if (light.max_color_temp_kelvin->has_state()) {
+        this->on_max_color_temp_kelvin_(i, light.max_color_temp_kelvin->state);
+      }
+    }
   }
 }
 
@@ -197,6 +294,7 @@ void DialLights::load_active_snapshot() {
   light.is_on = false;
   light.supports_brightness = false;
   light.supports_rgb = false;
+  light.supports_color_temp = false;
 
   if (light.state != nullptr && light.state->has_state()) {
     const std::string &value = light.state->state;
@@ -210,7 +308,7 @@ void DialLights::load_active_snapshot() {
   }
 
   if (light.modes != nullptr && light.modes->has_state()) {
-    parse_color_modes(light.modes->state, light.supports_brightness, light.supports_rgb);
+    parse_color_modes(light.modes->state, light.supports_brightness, light.supports_rgb, light.supports_color_temp);
   }
 
   if (light.brightness != nullptr && light.brightness->has_state()) {
@@ -231,6 +329,22 @@ void DialLights::load_active_snapshot() {
       light.color_g = g;
       light.color_b = b;
     }
+  }
+
+  if (light.color_mode != nullptr && light.color_mode->has_state()) {
+    this->on_color_mode_(this->active_index_, light.color_mode->state);
+  }
+
+  if (light.color_temp_kelvin != nullptr && light.color_temp_kelvin->has_state()) {
+    this->on_color_temp_kelvin_(this->active_index_, light.color_temp_kelvin->state);
+  }
+
+  if (light.min_color_temp_kelvin != nullptr && light.min_color_temp_kelvin->has_state()) {
+    this->on_min_color_temp_kelvin_(this->active_index_, light.min_color_temp_kelvin->state);
+  }
+
+  if (light.max_color_temp_kelvin != nullptr && light.max_color_temp_kelvin->has_state()) {
+    this->on_max_color_temp_kelvin_(this->active_index_, light.max_color_temp_kelvin->state);
   }
 }
 
@@ -255,7 +369,8 @@ void DialLights::on_modes_(size_t index, const std::string &value) {
   auto &light = this->lights_[index];
   light.supports_brightness = false;
   light.supports_rgb = false;
-  parse_color_modes(value, light.supports_brightness, light.supports_rgb);
+  light.supports_color_temp = false;
+  parse_color_modes(value, light.supports_brightness, light.supports_rgb, light.supports_color_temp);
 }
 
 void DialLights::on_brightness_(size_t index, float value) {
@@ -277,6 +392,46 @@ void DialLights::on_color_(size_t index, const std::string &value) {
     light.color_r = r;
     light.color_g = g;
     light.color_b = b;
+  }
+}
+
+void DialLights::on_color_mode_(size_t index, const std::string &value) {
+  auto &light = this->lights_[index];
+  if (value.empty()) {
+    light.color_mode_valid = false;
+    light.is_color_temp_mode = false;
+    return;
+  }
+  light.color_mode_valid = true;
+  light.is_color_temp_mode = (value == "color_temp");
+}
+
+void DialLights::on_color_temp_kelvin_(size_t index, float value) {
+  auto &light = this->lights_[index];
+  int kelvin = 0;
+  if (!parse_kelvin_value(value, kelvin))
+    return;
+  int min_k = light.min_color_temp_kelvin_valid ? light.min_color_temp_kelvin_value : DEFAULT_MIN_KELVIN;
+  int max_k = light.max_color_temp_kelvin_valid ? light.max_color_temp_kelvin_value : DEFAULT_MAX_KELVIN;
+  light.color_temp_valid = true;
+  light.color_temp_kelvin_value = clamp_kelvin(kelvin, min_k, max_k);
+}
+
+void DialLights::on_min_color_temp_kelvin_(size_t index, float value) {
+  auto &light = this->lights_[index];
+  int kelvin = 0;
+  if (parse_kelvin_value(value, kelvin)) {
+    light.min_color_temp_kelvin_valid = true;
+    light.min_color_temp_kelvin_value = kelvin;
+  }
+}
+
+void DialLights::on_max_color_temp_kelvin_(size_t index, float value) {
+  auto &light = this->lights_[index];
+  int kelvin = 0;
+  if (parse_kelvin_value(value, kelvin)) {
+    light.max_color_temp_kelvin_valid = true;
+    light.max_color_temp_kelvin_value = kelvin;
   }
 }
 
@@ -302,6 +457,12 @@ bool DialLights::active_supports_rgb() const {
   if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
     return false;
   return this->active_entry_().supports_rgb;
+}
+
+bool DialLights::active_supports_color_temp() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().supports_color_temp;
 }
 
 bool DialLights::active_brightness_valid() const {
@@ -347,6 +508,50 @@ int DialLights::active_color_h() const {
   if (!light.color_valid)
     return 0;
   return rgb_to_hue(light.color_r, light.color_g, light.color_b);
+}
+
+bool DialLights::active_color_mode_valid() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().color_mode_valid;
+}
+
+bool DialLights::active_is_color_temp_mode() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().is_color_temp_mode;
+}
+
+bool DialLights::active_color_temp_valid() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().color_temp_valid;
+}
+
+int DialLights::active_color_temp_kelvin() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return DEFAULT_MIN_KELVIN;
+  return this->active_entry_().color_temp_kelvin_value;
+}
+
+int DialLights::active_min_color_temp_kelvin() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return DEFAULT_MIN_KELVIN;
+  const auto &light = this->active_entry_();
+  int min_k = light.min_color_temp_kelvin_valid ? light.min_color_temp_kelvin_value : DEFAULT_MIN_KELVIN;
+  int max_k = light.max_color_temp_kelvin_valid ? light.max_color_temp_kelvin_value : DEFAULT_MAX_KELVIN;
+  sanitize_kelvin_range(min_k, max_k);
+  return min_k;
+}
+
+int DialLights::active_max_color_temp_kelvin() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return DEFAULT_MAX_KELVIN;
+  const auto &light = this->active_entry_();
+  int min_k = light.min_color_temp_kelvin_valid ? light.min_color_temp_kelvin_value : DEFAULT_MIN_KELVIN;
+  int max_k = light.max_color_temp_kelvin_valid ? light.max_color_temp_kelvin_value : DEFAULT_MAX_KELVIN;
+  sanitize_kelvin_range(min_k, max_k);
+  return max_k;
 }
 
 void DialLights::select_light(size_t index) {
