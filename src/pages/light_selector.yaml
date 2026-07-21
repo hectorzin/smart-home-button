@@ -161,6 +161,24 @@ script:
             return c;
           };
 
+          auto apply_icon_state = [&](lv_obj_t *img, const esphome::dial_lights::LightCardSnapshot &snap,
+                                      const esphome::dial_carousel::CarouselSlotLayout &layout, bool is_center) {
+            const CardColors cc = colors_for_snapshot(snap);
+            const bool inactive = !snap.state_valid || !snap.is_on;
+
+            lv_obj_set_style_img_recolor(img, lv_color_hex(cc.accent), LV_PART_MAIN);
+            lv_obj_set_style_img_recolor_opa(img, inactive ? 160 : 255, LV_PART_MAIN);
+
+            int icon_opa = layout.opa_icon;
+            if (is_center) {
+              icon_opa = icon_opa > 0 ? icon_opa : (inactive ? 96 : 255);
+            }
+            if (inactive && icon_opa > 0) {
+              icon_opa = icon_opa * 75 / 100;
+            }
+            lv_obj_set_style_opa(img, icon_opa, LV_PART_MAIN);
+          };
+
           auto style_dot = [](lv_obj_t *dot, bool selected, uint32_t accent) {
             if (selected) {
               lv_obj_set_style_bg_color(dot, lv_color_hex(accent), LV_PART_MAIN);
@@ -213,7 +231,7 @@ script:
             lv_label_set_text(lbl, snap.name.c_str());
             lv_obj_set_style_text_color(lbl, lv_color_hex(0x232A38), LV_PART_MAIN);
             lv_obj_set_style_opa(lbl, layout.opa_text > 0 ? layout.opa_text : 140, LV_PART_MAIN);
-            lv_obj_set_style_opa(img, layout.opa_icon, LV_PART_MAIN);
+            apply_icon_state(img, snap, layout, false);
             lv_obj_set_style_bg_color(slot, lv_color_hex(0x0D1537), LV_PART_MAIN);
             lv_obj_set_style_bg_opa(slot, layout.opa_bg, LV_PART_MAIN);
             lv_obj_set_style_border_width(slot, 0, LV_PART_MAIN);
@@ -224,6 +242,7 @@ script:
             lv_label_set_text(lbl, "");
             lv_obj_set_style_opa(lbl, 0, LV_PART_MAIN);
             lv_obj_set_style_opa(img, 0, LV_PART_MAIN);
+            lv_obj_set_style_img_recolor_opa(img, 0, LV_PART_MAIN);
             lv_obj_set_style_bg_color(slot, lv_color_hex(0x0D1537), LV_PART_MAIN);
             lv_obj_set_style_bg_opa(slot, layout.opa_bg, LV_PART_MAIN);
             lv_obj_set_style_border_width(slot, 0, LV_PART_MAIN);
@@ -254,16 +273,14 @@ script:
             if (!snap.state_valid || !snap.is_on) {
               title_col = lv_color_hex(0x6B7FCC);
               sub_col = lv_color_hex(0x6B7FCC);
-              lv_obj_set_style_opa(img, layout.opa_icon > 0 ? layout.opa_icon : 96, LV_PART_MAIN);
             } else if (cc.use_dynamic_text) {
               title_col = text_color_for_bg(cc.pill_r, cc.pill_g, cc.pill_b);
               sub_col = title_col;
-              lv_obj_set_style_opa(img, layout.opa_icon > 0 ? layout.opa_icon : 255, LV_PART_MAIN);
             } else {
               title_col = lv_color_hex(0xFDC003);
               sub_col = lv_color_hex(0xFDC003);
-              lv_obj_set_style_opa(img, layout.opa_icon > 0 ? layout.opa_icon : 255, LV_PART_MAIN);
             }
+            apply_icon_state(img, snap, layout, true);
             lv_obj_set_style_text_color(lbl, title_col, LV_PART_MAIN);
             lv_obj_set_style_text_color(sub, sub_col, LV_PART_MAIN);
             lv_obj_set_style_opa(lbl, layout.opa_text > 0 ? layout.opa_text : 255, LV_PART_MAIN);
@@ -301,6 +318,7 @@ script:
               lv_label_set_text(title_lbls[slot], "");
               lv_obj_set_style_opa(title_lbls[slot], 0, LV_PART_MAIN);
               lv_obj_set_style_opa(icons[slot], 0, LV_PART_MAIN);
+              lv_obj_set_style_img_recolor_opa(icons[slot], 0, LV_PART_MAIN);
               lv_obj_set_style_bg_opa(slots[slot], LV_OPA_TRANSP, LV_PART_MAIN);
             }
             lv_label_set_text(id(ls_slot_center_sub), "");
