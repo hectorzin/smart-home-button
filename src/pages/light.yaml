@@ -804,7 +804,7 @@ script:
               lv_obj_set_style_border_width(id(onoff_main_btn), 2, LV_STATE_DEFAULT);
               lv_obj_set_style_shadow_width(id(onoff_main_btn), 8, LV_STATE_DEFAULT);
               lv_obj_set_style_shadow_color(id(onoff_main_btn), lv_color_hex(0x262626), LV_STATE_DEFAULT);
-              lv_obj_set_style_shadow_opa(id(onoff_main_btn), LV_OPA_25, LV_STATE_DEFAULT);
+              lv_obj_set_style_shadow_opa(id(onoff_main_btn), LV_OPA_20, LV_STATE_DEFAULT);
               lv_obj_set_style_text_color(id(lbl_onoff_state), lv_color_hex(0x282729), LV_STATE_DEFAULT);
               lv_obj_set_style_text_color(id(lbl_onoff_title), lv_color_hex(0x282729), LV_STATE_DEFAULT);
             }
