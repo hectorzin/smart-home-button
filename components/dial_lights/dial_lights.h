@@ -24,12 +24,20 @@ class DialLights : public Component {
   const std::string &active_entity_id() const;
   const std::string &name_at(size_t index) const;
 
+  bool active_has_valid_state() const;
+  bool active_is_on() const;
+
  protected:
   struct LightEntry {
     std::string entity_id;
     std::string name;
     text_sensor::TextSensor *state{nullptr};
+    bool state_valid{false};
+    bool is_on{false};
   };
+
+  const LightEntry &active_entry_() const;
+  void on_state_(size_t index, const std::string &value);
 
   std::vector<LightEntry> lights_;
   size_t active_index_{0};

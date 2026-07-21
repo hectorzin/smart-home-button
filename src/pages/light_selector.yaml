@@ -57,6 +57,10 @@ script:
       - lvgl.label.update:
           id: lbl_light_title
           text: !lambda 'return id(dial_lights_id).active_name().c_str();'
+      - lambda: |-
+          if (id(dial_lights_id).active_has_valid_state()) {
+            id(light_on) = id(dial_lights_id).active_is_on();
+          }
       - script.execute: open_light
 
 lvgl:

@@ -7,11 +7,49 @@ namespace {
 const std::string EMPTY_STRING;
 }
 
-void DialLights::add_light(const std::string &entity_id, const std::string &name, text_sensor::TextSensor *state) {
-  this->lights_.push_back({entity_id, name, state});
+void DialLights::add_light(
+    const std::string &entity_id,
+    const std::string &name,
+    text_sensor::TextSensor *state) {
+  this->lights_.push_back({entity_id, name, state, false, false});
 }
 
 void DialLights::setup() {
+  for (size_t i = 0; i < this->lights_.size(); i++) {
+    auto &light = this->lights_[i];
+    if (light.state != nullptr) {
+      light.state->add_on_state_callback([this, i](const std::string &value) { this->on_state_(i, value); });
+    }
+  }
+}
+
+const DialLights::LightEntry &DialLights::active_entry_() const { return this->lights_[this->active_index_]; }
+
+void DialLights::on_state_(size_t index, const std::string &value) {
+  auto &light = this->lights_[index];
+  if (value == "on") {
+    light.state_valid = true;
+    light.is_on = true;
+    return;
+  }
+  if (value == "off") {
+    light.state_valid = true;
+    light.is_on = false;
+    return;
+  }
+  light.state_valid = false;
+}
+
+bool DialLights::active_has_valid_state() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().state_valid;
+}
+
+bool DialLights::active_is_on() const {
+  if (this->lights_.empty() || this->active_index_ >= this->lights_.size())
+    return false;
+  return this->active_entry_().is_on;
 }
 
 void DialLights::select_light(size_t index) {
