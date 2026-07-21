@@ -60,6 +60,8 @@ script:
           text: !lambda 'return id(dial_lights_id).active_name().c_str();'
       - lambda: |-
           id(light_multilight_active) = true;
+      - script.execute: reset_selected_light_visual_state
+      - lambda: |-
           if (id(dial_lights_id).active_has_valid_state()) {
             id(light_on) = id(dial_lights_id).active_is_on();
           }
