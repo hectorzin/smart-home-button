@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 
 #include "esphome/core/log.h"
 
@@ -51,12 +52,74 @@ bool parse_brightness_percent(float raw, int &percent) {
   return true;
 }
 
-bool parse_rgb_color(const std::string &raw, int &r, int &g, int &b) {
-  if (sscanf(raw.c_str(), "[%d, %d, %d]", &r, &g, &b) != 3)
+void trim_string(std::string &text) {
+  while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())))
+    text.erase(text.begin());
+  while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())))
+    text.pop_back();
+}
+
+bool parse_int_strict(const std::string &text, size_t &pos, int &value) {
+  while (pos < text.size() && std::isspace(static_cast<unsigned char>(text[pos])))
+    pos++;
+  if (pos >= text.size())
     return false;
-  r = std::max(0, std::min(255, r));
-  g = std::max(0, std::min(255, g));
-  b = std::max(0, std::min(255, b));
+  char *end = nullptr;
+  const long parsed = std::strtol(text.c_str() + pos, &end, 10);
+  if (end == text.c_str() + pos)
+    return false;
+  value = static_cast<int>(parsed);
+  pos = static_cast<size_t>(end - text.c_str());
+  return true;
+}
+
+bool parse_rgb_color(const std::string &raw, int &r, int &g, int &b) {
+  std::string text = raw;
+  trim_string(text);
+  if (text.empty())
+    return false;
+
+  const char open = text.front();
+  char close = '\0';
+  if (open == '[')
+    close = ']';
+  else if (open == '(')
+    close = ')';
+  else
+    return false;
+
+  if (text.back() != close)
+    return false;
+
+  const std::string inner = text.substr(1, text.size() - 2);
+  size_t pos = 0;
+  int ri = 0;
+  int gi = 0;
+  int bi = 0;
+  if (!parse_int_strict(inner, pos, ri))
+    return false;
+  while (pos < inner.size() && std::isspace(static_cast<unsigned char>(inner[pos])))
+    pos++;
+  if (pos >= inner.size() || inner[pos] != ',')
+    return false;
+  pos++;
+  if (!parse_int_strict(inner, pos, gi))
+    return false;
+  while (pos < inner.size() && std::isspace(static_cast<unsigned char>(inner[pos])))
+    pos++;
+  if (pos >= inner.size() || inner[pos] != ',')
+    return false;
+  pos++;
+  if (!parse_int_strict(inner, pos, bi))
+    return false;
+  while (pos < inner.size() && std::isspace(static_cast<unsigned char>(inner[pos])))
+    pos++;
+  if (pos != inner.size())
+    return false;
+
+  r = std::max(0, std::min(255, ri));
+  g = std::max(0, std::min(255, gi));
+  b = std::max(0, std::min(255, bi));
   return true;
 }
 
@@ -134,12 +197,6 @@ void DialLights::load_active_snapshot() {
   light.is_on = false;
   light.supports_brightness = false;
   light.supports_rgb = false;
-  light.brightness_valid = false;
-  light.brightness_percent = 75;
-  light.color_valid = false;
-  light.color_r = 169;
-  light.color_g = 143;
-  light.color_b = 255;
 
   if (light.state != nullptr && light.state->has_state()) {
     const std::string &value = light.state->state;
@@ -217,31 +274,23 @@ void DialLights::on_modes_(size_t index, const std::string &value) {
 
 void DialLights::on_brightness_(size_t index, float value) {
   auto &light = this->lights_[index];
-  int percent = 75;
+  int percent = 0;
   if (parse_brightness_percent(value, percent)) {
     light.brightness_valid = true;
     light.brightness_percent = percent;
-  } else {
-    light.brightness_valid = false;
-    light.brightness_percent = 75;
   }
 }
 
 void DialLights::on_color_(size_t index, const std::string &value) {
   auto &light = this->lights_[index];
-  int r = 169;
-  int g = 143;
-  int b = 255;
+  int r = 0;
+  int g = 0;
+  int b = 0;
   if (parse_rgb_color(value, r, g, b)) {
     light.color_valid = true;
     light.color_r = r;
     light.color_g = g;
     light.color_b = b;
-  } else {
-    light.color_valid = false;
-    light.color_r = 169;
-    light.color_g = 143;
-    light.color_b = 255;
   }
 }
 

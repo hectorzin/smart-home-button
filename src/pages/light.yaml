@@ -228,9 +228,14 @@ script:
             lambda: 'return id(light_supports_rgb);'
           then:
             - lambda: |-
-                ESP_LOGI("light_ha", "action=light.turn_on entity=%s brightness=%d rgb=[%d,%d,%d]",
-                         "${light_entity}", id(light_brightness), id(light_color_r),
-                         id(light_color_g), id(light_color_b));
+                const std::string target = id(light_multilight_active)
+                    ? id(dial_lights_id).active_entity_id()
+                    : std::string("${light_entity}");
+                ESP_LOGI("light_ha",
+                         "action=light.turn_on selected=%s resolved=%s brightness=%d rgb=[%d,%d,%d] multilight=%s",
+                         id(light_multilight_active) ? id(dial_lights_id).active_name().c_str() : "mono",
+                         target.c_str(), id(light_brightness), id(light_color_r), id(light_color_g),
+                         id(light_color_b), id(light_multilight_active) ? "yes" : "no");
             - homeassistant.action:
                 action: light.turn_on
                 data_template:
@@ -239,7 +244,10 @@ script:
                   rgb_color: "[{{ red | int }}, {{ green | int }}, {{ blue | int }}]"
                 variables:
                   target_entity: !lambda |-
-                    return id(dial_lights_id).active_entity_id();
+                    if (id(light_multilight_active)) {
+                      return id(dial_lights_id).active_entity_id();
+                    }
+                    return std::string("${light_entity}");
                   brightness: !lambda "return id(light_brightness);"
                   red: !lambda "return id(light_color_r);"
                   green: !lambda "return id(light_color_g);"
@@ -250,8 +258,14 @@ script:
                   lambda: 'return id(light_supports_brightness);'
                 then:
                   - lambda: |-
-                      ESP_LOGI("light_ha", "action=light.turn_on entity=%s brightness=%d",
-                               "${light_entity}", id(light_brightness));
+                      const std::string target = id(light_multilight_active)
+                          ? id(dial_lights_id).active_entity_id()
+                          : std::string("${light_entity}");
+                      ESP_LOGI("light_ha",
+                               "action=light.turn_on selected=%s resolved=%s brightness=%d multilight=%s",
+                               id(light_multilight_active) ? id(dial_lights_id).active_name().c_str() : "mono",
+                               target.c_str(), id(light_brightness),
+                               id(light_multilight_active) ? "yes" : "no");
                   - homeassistant.action:
                       action: light.turn_on
                       data_template:
@@ -259,30 +273,49 @@ script:
                         brightness_pct: "{{ brightness | int }}"
                       variables:
                         target_entity: !lambda |-
-                          return id(dial_lights_id).active_entity_id();
+                          if (id(light_multilight_active)) {
+                            return id(dial_lights_id).active_entity_id();
+                          }
+                          return std::string("${light_entity}");
                         brightness: !lambda "return id(light_brightness);"
                 else:
                   - lambda: |-
-                      ESP_LOGI("light_ha", "action=light.turn_on entity=%s", "${light_entity}");
+                      const std::string target = id(light_multilight_active)
+                          ? id(dial_lights_id).active_entity_id()
+                          : std::string("${light_entity}");
+                      ESP_LOGI("light_ha", "action=light.turn_on selected=%s resolved=%s multilight=%s",
+                               id(light_multilight_active) ? id(dial_lights_id).active_name().c_str() : "mono",
+                               target.c_str(), id(light_multilight_active) ? "yes" : "no");
                   - homeassistant.action:
                       action: light.turn_on
                       data_template:
                         entity_id: "{{ target_entity }}"
                       variables:
                         target_entity: !lambda |-
-                          return id(dial_lights_id).active_entity_id();
+                          if (id(light_multilight_active)) {
+                            return id(dial_lights_id).active_entity_id();
+                          }
+                          return std::string("${light_entity}");
 
   - id: send_light_turn_off
     then:
       - lambda: |-
-          ESP_LOGI("light_ha", "action=light.turn_off entity=%s", "${light_entity}");
+          const std::string target = id(light_multilight_active)
+              ? id(dial_lights_id).active_entity_id()
+              : std::string("${light_entity}");
+          ESP_LOGI("light_ha", "action=light.turn_off selected=%s resolved=%s multilight=%s",
+                   id(light_multilight_active) ? id(dial_lights_id).active_name().c_str() : "mono",
+                   target.c_str(), id(light_multilight_active) ? "yes" : "no");
       - homeassistant.action:
           action: light.turn_off
           data_template:
             entity_id: "{{ target_entity }}"
           variables:
             target_entity: !lambda |-
-              return id(dial_lights_id).active_entity_id();
+              if (id(light_multilight_active)) {
+                return id(dial_lights_id).active_entity_id();
+              }
+              return std::string("${light_entity}");
 
   - id: queue_light_brightness
     mode: restart
@@ -294,8 +327,14 @@ script:
           then:
             - lambda: |-
                 id(light_brightness_action_sent) = true;
-                ESP_LOGI("light_ha", "sending coalesced brightness=%d to entity=%s",
-                         id(light_brightness), "${light_entity}");
+                const std::string target = id(light_multilight_active)
+                    ? id(dial_lights_id).active_entity_id()
+                    : std::string("${light_entity}");
+                ESP_LOGI("light_ha",
+                         "sending coalesced brightness=%d selected=%s resolved=%s multilight=%s",
+                         id(light_brightness),
+                         id(light_multilight_active) ? id(dial_lights_id).active_name().c_str() : "mono",
+                         target.c_str(), id(light_multilight_active) ? "yes" : "no");
             - script.execute: send_light_turn_on
       - delay: 600ms
       - lambda: |-
@@ -461,8 +500,13 @@ script:
           id(light_brightness_action_sent) = false;
           id(light_ha_brightness_received_after_send) = false;
           id(light_user_adjusting) = true;
-          ESP_LOGI("light_ha", "local brightness requested=%d for entity=%s",
-                   id(light_brightness), "${light_entity}");
+          const std::string target = id(light_multilight_active)
+              ? id(dial_lights_id).active_entity_id()
+              : std::string("${light_entity}");
+          ESP_LOGI("light_ha", "local brightness requested=%d selected=%s resolved=%s multilight=%s",
+                   id(light_brightness),
+                   id(light_multilight_active) ? id(dial_lights_id).active_name().c_str() : "mono",
+                   target.c_str(), id(light_multilight_active) ? "yes" : "no");
       - script.execute: refresh_light_arc
       - script.execute: queue_light_brightness
 
@@ -476,8 +520,13 @@ script:
           id(light_brightness_action_sent) = false;
           id(light_ha_brightness_received_after_send) = false;
           id(light_user_adjusting) = true;
-          ESP_LOGI("light_ha", "local brightness requested=%d for entity=%s",
-                   id(light_brightness), "${light_entity}");
+          const std::string target = id(light_multilight_active)
+              ? id(dial_lights_id).active_entity_id()
+              : std::string("${light_entity}");
+          ESP_LOGI("light_ha", "local brightness requested=%d selected=%s resolved=%s multilight=%s",
+                   id(light_brightness),
+                   id(light_multilight_active) ? id(dial_lights_id).active_name().c_str() : "mono",
+                   target.c_str(), id(light_multilight_active) ? "yes" : "no");
       - script.execute: refresh_light_arc
       - script.execute: queue_light_brightness
 
