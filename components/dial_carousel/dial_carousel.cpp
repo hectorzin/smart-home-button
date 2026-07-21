@@ -165,7 +165,7 @@ void DialCarousel::anim_exec_cb_(void *var, int32_t progress) {
 }
 
 void DialCarousel::anim_ready_cb_(lv_anim_t *anim) {
-  auto *self = static_cast<DialCarousel *>(lv_anim_get_var(anim));
+  auto *self = static_cast<DialCarousel *>(anim->var);
   if (self == nullptr)
     return;
 
