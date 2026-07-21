@@ -66,6 +66,7 @@ script:
           id(light_brightness) = 75;
           id(light_supports_brightness) = false;
           id(light_supports_rgb) = false;
+          id(light_supports_color_temp) = false;
           id(light_color_r) = 169;
           id(light_color_g) = 143;
           id(light_color_b) = 255;
@@ -82,6 +83,26 @@ script:
           }
           id(light_supports_brightness) = id(dial_lights_id).active_supports_brightness();
           id(light_supports_rgb) = id(dial_lights_id).active_supports_rgb();
+          id(light_supports_color_temp) = id(dial_lights_id).active_supports_color_temp();
+
+          int min_k = id(dial_lights_id).active_min_color_temp_kelvin();
+          int max_k = id(dial_lights_id).active_max_color_temp_kelvin();
+          if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
+          if (max_k - min_k < 1) max_k = min_k + 1;
+          id(light_white_kelvin_min) = min_k;
+          id(light_white_kelvin_max) = max_k;
+          if (id(dial_lights_id).active_color_temp_valid()) {
+            int k = id(dial_lights_id).active_color_temp_kelvin();
+            if (k < min_k) k = min_k;
+            if (k > max_k) k = max_k;
+            id(light_white_kelvin) = k;
+            id(light_white_kelvin_prev) = k;
+          }
+          if (id(dial_lights_id).active_color_mode_valid()) {
+            id(light_ha_color_mode_is_temp) = id(dial_lights_id).active_is_color_temp_mode();
+          } else {
+            id(light_ha_color_mode_is_temp) = false;
+          }
 
           if (id(dial_lights_id).active_brightness_valid()) {
             const int pct = id(dial_lights_id).active_brightness_percent();

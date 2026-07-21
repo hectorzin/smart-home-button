@@ -50,6 +50,24 @@ text_sensor:
     attribute: rgb_color
     internal: true
 
+  - platform: homeassistant
+    id: dial_light_sofa_color_mode
+    entity_id: light.sofa
+    attribute: color_mode
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_color_mode
+    entity_id: light.mesa
+    attribute: color_mode
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_color_mode
+    entity_id: light.luces_jardin
+    attribute: color_mode
+    internal: true
+
 sensor:
   - platform: homeassistant
     id: dial_light_sofa_brightness
@@ -67,4 +85,58 @@ sensor:
     id: dial_light_jardin_brightness
     entity_id: light.luces_jardin
     attribute: brightness
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_sofa_color_temp_kelvin
+    entity_id: light.sofa
+    attribute: color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_color_temp_kelvin
+    entity_id: light.mesa
+    attribute: color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_color_temp_kelvin
+    entity_id: light.luces_jardin
+    attribute: color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_sofa_min_color_temp_kelvin
+    entity_id: light.sofa
+    attribute: min_color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_min_color_temp_kelvin
+    entity_id: light.mesa
+    attribute: min_color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_min_color_temp_kelvin
+    entity_id: light.luces_jardin
+    attribute: min_color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_sofa_max_color_temp_kelvin
+    entity_id: light.sofa
+    attribute: max_color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_mesa_max_color_temp_kelvin
+    entity_id: light.mesa
+    attribute: max_color_temp_kelvin
+    internal: true
+
+  - platform: homeassistant
+    id: dial_light_jardin_max_color_temp_kelvin
+    entity_id: light.luces_jardin
+    attribute: max_color_temp_kelvin
     internal: true

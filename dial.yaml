@@ -12,7 +12,7 @@ packages:
   timer_page:  !include src/pages/timer.yaml
 
 external_components:
-  - source: github://hectorzin/smart-home-button@b151168e23254f31208a857b8db48898abc202be
+  - source: github://hectorzin/smart-home-button@ea0d71398347fbc3189ad963aad3118ef48ff31f
     components: [dial_lights]
     refresh: 0s
 
@@ -23,18 +23,30 @@ dial_lights:
     modes_sensor: dial_light_sofa_modes
     brightness_sensor: dial_light_sofa_brightness
     color_sensor: dial_light_sofa_rgb
+    color_mode_sensor: dial_light_sofa_color_mode
+    color_temp_kelvin_sensor: dial_light_sofa_color_temp_kelvin
+    min_color_temp_kelvin_sensor: dial_light_sofa_min_color_temp_kelvin
+    max_color_temp_kelvin_sensor: dial_light_sofa_max_color_temp_kelvin
   - entity_id: light.mesa
     name: Mesa
     state_sensor: dial_light_mesa_state
     modes_sensor: dial_light_mesa_modes
     brightness_sensor: dial_light_mesa_brightness
     color_sensor: dial_light_mesa_rgb
+    color_mode_sensor: dial_light_mesa_color_mode
+    color_temp_kelvin_sensor: dial_light_mesa_color_temp_kelvin
+    min_color_temp_kelvin_sensor: dial_light_mesa_min_color_temp_kelvin
+    max_color_temp_kelvin_sensor: dial_light_mesa_max_color_temp_kelvin
   - entity_id: light.luces_jardin
     name: Jardín
     state_sensor: dial_light_jardin_state
     modes_sensor: dial_light_jardin_modes
     brightness_sensor: dial_light_jardin_brightness
     color_sensor: dial_light_jardin_rgb
+    color_mode_sensor: dial_light_jardin_color_mode
+    color_temp_kelvin_sensor: dial_light_jardin_color_temp_kelvin
+    min_color_temp_kelvin_sensor: dial_light_jardin_min_color_temp_kelvin
+    max_color_temp_kelvin_sensor: dial_light_jardin_max_color_temp_kelvin
 
 substitutions:
   timezone: Europe/Madrid

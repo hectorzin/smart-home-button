@@ -43,7 +43,16 @@ font:
     id: font_cp_hue
     size: 20
     bpp: 4
-    glyphs: "0123456789ABCDEF"
+    glyphs: "0123456789ABCDEFK"
+
+  - file:
+      family: DM+Sans
+      weight: 700
+      type: gfonts
+    id: font_cp_mode
+    size: 11
+    bpp: 4
+    glyphs: "COLRWHITE "
 
 color:
   - id: col_light_bg
@@ -94,6 +103,27 @@ globals:
     type: int
     initial_value: '255'
   - id: light_supports_rgb
+    type: bool
+    initial_value: 'false'
+  - id: light_supports_color_temp
+    type: bool
+    initial_value: 'false'
+  - id: light_color_picker_mode
+    type: int
+    initial_value: '0'
+  - id: light_white_kelvin
+    type: int
+    initial_value: '4000'
+  - id: light_white_kelvin_min
+    type: int
+    initial_value: '2000'
+  - id: light_white_kelvin_max
+    type: int
+    initial_value: '6500'
+  - id: light_white_kelvin_prev
+    type: int
+    initial_value: '4000'
+  - id: light_ha_color_mode_is_temp
     type: bool
     initial_value: 'false'
   - id: light_supports_brightness
@@ -177,17 +207,75 @@ text_sensor:
           then:
             - lambda: |-
                 id(light_supports_rgb) = x.find("rgb") != std::string::npos;
+                id(light_supports_color_temp) = x.find("color_temp") != std::string::npos;
                 id(light_supports_brightness) =
                     id(light_supports_rgb) || x.find("brightness") != std::string::npos ||
                     x.find("color_temp") != std::string::npos || x.find("hs") != std::string::npos ||
                     x.find("xy") != std::string::npos;
-                ESP_LOGI("light_ha", "entity=%s supported_color_modes=%s brightness=%s rgb=%s",
+                ESP_LOGI("light_ha", "entity=%s supported_color_modes=%s brightness=%s rgb=%s ct=%s",
                          "${light_entity}", x.c_str(),
                          id(light_supports_brightness) ? "yes" : "no",
-                         id(light_supports_rgb) ? "yes" : "no");
+                         id(light_supports_rgb) ? "yes" : "no",
+                         id(light_supports_color_temp) ? "yes" : "no");
+            - script.execute: refresh_light_arc
+
+  - platform: homeassistant
+    id: ha_light_color_mode
+    entity_id: ${light_entity}
+    attribute: color_mode
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: 'return !id(light_multilight_active);'
+          then:
+            - lambda: |-
+                id(light_ha_color_mode_is_temp) = x == "color_temp";
             - script.execute: refresh_light_arc
 
 sensor:
+  - platform: homeassistant
+    id: ha_light_color_temp_kelvin
+    entity_id: ${light_entity}
+    attribute: color_temp_kelvin
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: 'return !id(light_multilight_active) && !id(in_colorpicker);'
+          then:
+            - lambda: |-
+                if (x != x || x <= 0.0f) return;
+                id(light_white_kelvin) = static_cast<int>(x + 0.5f);
+
+  - platform: homeassistant
+    id: ha_light_min_color_temp_kelvin
+    entity_id: ${light_entity}
+    attribute: min_color_temp_kelvin
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: 'return !id(light_multilight_active);'
+          then:
+            - lambda: |-
+                if (x != x || x <= 0.0f) return;
+                id(light_white_kelvin_min) = static_cast<int>(x + 0.5f);
+
+  - platform: homeassistant
+    id: ha_light_max_color_temp_kelvin
+    entity_id: ${light_entity}
+    attribute: max_color_temp_kelvin
+    internal: true
+    on_value:
+      - if:
+          condition:
+            lambda: 'return !id(light_multilight_active);'
+          then:
+            - lambda: |-
+                if (x != x || x <= 0.0f) return;
+                id(light_white_kelvin_max) = static_cast<int>(x + 0.5f);
+
   - platform: homeassistant
     id: ha_light_brightness
     entity_id: ${light_entity}
@@ -285,6 +373,40 @@ script:
               }
               return std::string("${light_entity}");
 
+  - id: send_light_color_temp
+    then:
+      - if:
+          condition:
+            lambda: 'return id(light_supports_brightness);'
+          then:
+            - homeassistant.action:
+                action: light.turn_on
+                data_template:
+                  entity_id: "{{ target_entity }}"
+                  color_temp_kelvin: "{{ kelvin | int }}"
+                  brightness_pct: "{{ brightness | int }}"
+                variables:
+                  target_entity: !lambda |-
+                    if (id(light_multilight_active)) {
+                      return id(dial_lights_id).active_entity_id();
+                    }
+                    return std::string("${light_entity}");
+                  kelvin: !lambda "return id(light_white_kelvin);"
+                  brightness: !lambda "return id(light_brightness);"
+          else:
+            - homeassistant.action:
+                action: light.turn_on
+                data_template:
+                  entity_id: "{{ target_entity }}"
+                  color_temp_kelvin: "{{ kelvin | int }}"
+                variables:
+                  target_entity: !lambda |-
+                    if (id(light_multilight_active)) {
+                      return id(dial_lights_id).active_entity_id();
+                    }
+                    return std::string("${light_entity}");
+                  kelvin: !lambda "return id(light_white_kelvin);"
+
   - id: queue_light_brightness
     mode: restart
     then:
@@ -352,52 +474,144 @@ script:
     then:
       - lambda: |-
           id(light_color_h_prev) = id(light_color_h);
+          id(light_white_kelvin_prev) = id(light_white_kelvin);
+
+          bool rgb = id(light_supports_rgb);
+          bool ct = id(light_supports_color_temp);
+          bool mode_is_temp = id(light_ha_color_mode_is_temp);
+
+          if (id(light_multilight_active)) {
+            rgb = id(dial_lights_id).active_supports_rgb();
+            ct = id(dial_lights_id).active_supports_color_temp();
+            id(light_supports_rgb) = rgb;
+            id(light_supports_color_temp) = ct;
+            if (id(dial_lights_id).active_color_mode_valid()) {
+              mode_is_temp = id(dial_lights_id).active_is_color_temp_mode();
+            }
+            int min_k = id(dial_lights_id).active_min_color_temp_kelvin();
+            int max_k = id(dial_lights_id).active_max_color_temp_kelvin();
+            if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
+            if (max_k - min_k < 1) max_k = min_k + 1;
+            id(light_white_kelvin_min) = min_k;
+            id(light_white_kelvin_max) = max_k;
+            if (id(dial_lights_id).active_color_temp_valid()) {
+              int k = id(dial_lights_id).active_color_temp_kelvin();
+              if (k < min_k) k = min_k;
+              if (k > max_k) k = max_k;
+              id(light_white_kelvin) = k;
+            }
+          } else {
+            int min_k = id(light_white_kelvin_min);
+            int max_k = id(light_white_kelvin_max);
+            if (min_k <= 0) min_k = 2000;
+            if (max_k <= 0) max_k = 6500;
+            if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
+            if (max_k - min_k < 1) max_k = min_k + 1;
+            id(light_white_kelvin_min) = min_k;
+            id(light_white_kelvin_max) = max_k;
+            int k = id(light_white_kelvin);
+            if (k < min_k) k = min_k;
+            if (k > max_k) k = max_k;
+            id(light_white_kelvin) = k;
+          }
+
+          if (rgb && ct) {
+            id(light_color_picker_mode) = mode_is_temp ? 1 : 0;
+          } else if (rgb) {
+            id(light_color_picker_mode) = 0;
+          } else {
+            id(light_color_picker_mode) = 1;
+          }
+
+          id(light_white_kelvin_prev) = id(light_white_kelvin);
       - globals.set: {id: in_light, value: 'false'}
       - globals.set: {id: in_colorpicker, value: 'true'}
+      - script.execute: refresh_color_preview
       - lvgl.page.show:
           id: page_colorpicker
           animation: MOVE_LEFT
 
   - id: close_colorpicker
     then:
-      - lambda: "id(light_color_h) = id(light_color_h_prev);"
+      - lambda: |-
+          id(light_color_h) = id(light_color_h_prev);
+          id(light_white_kelvin) = id(light_white_kelvin_prev);
       - globals.set: {id: in_colorpicker, value: 'false'}
       - globals.set: {id: in_light, value: 'true'}
       - lvgl.page.show:
           id: page_light
           animation: MOVE_RIGHT
 
-  - id: confirm_light_color
+  - id: toggle_color_picker_mode
     then:
       - lambda: |-
-          int h = id(light_color_h);
-          int hi = (h / 60) % 6;
-          float f = h / 60.0f - (int)(h / 60.0f);
-          int q = (int)(255.0f * (1.0f - f));
-          int t = (int)(255.0f * f);
-          int r8, g8, b8;
-          switch (hi) {
-            case 0: r8=255; g8=t;   b8=0;   break;
-            case 1: r8=q;   g8=255; b8=0;   break;
-            case 2: r8=0;   g8=255; b8=t;   break;
-            case 3: r8=0;   g8=q;   b8=255; break;
-            case 4: r8=t;   g8=0;   b8=255; break;
-            default: r8=255; g8=0;  b8=q;   break;
-          }
-          id(light_color_r) = r8;
-          id(light_color_g) = g8;
-          id(light_color_b) = b8;
-      - globals.set: {id: in_colorpicker, value: 'false'}
-      - globals.set: {id: in_light, value: 'true'}
-      - script.execute: refresh_light_arc
+          if (!id(light_supports_rgb) || !id(light_supports_color_temp)) return;
+          id(light_color_picker_mode) = id(light_color_picker_mode) == 0 ? 1 : 0;
+      - script.execute: refresh_color_preview
+
+  - id: confirm_light_color
+    then:
       - if:
           condition:
-            lambda: 'return id(light_on) && id(light_supports_rgb);'
+            lambda: 'return id(light_color_picker_mode) == 0;'
           then:
-            - script.execute: send_light_turn_on
-      - lvgl.page.show:
-          id: page_light
-          animation: MOVE_RIGHT
+            - lambda: |-
+                int h = id(light_color_h);
+                int hi = (h / 60) % 6;
+                float f = h / 60.0f - (int)(h / 60.0f);
+                int q = (int)(255.0f * (1.0f - f));
+                int t = (int)(255.0f * f);
+                int r8, g8, b8;
+                switch (hi) {
+                  case 0: r8=255; g8=t;   b8=0;   break;
+                  case 1: r8=q;   g8=255; b8=0;   break;
+                  case 2: r8=0;   g8=255; b8=t;   break;
+                  case 3: r8=0;   g8=q;   b8=255; break;
+                  case 4: r8=t;   g8=0;   b8=255; break;
+                  default: r8=255; g8=0;  b8=q;   break;
+                }
+                id(light_color_r) = r8;
+                id(light_color_g) = g8;
+                id(light_color_b) = b8;
+            - globals.set: {id: in_colorpicker, value: 'false'}
+            - globals.set: {id: in_light, value: 'true'}
+            - script.execute: refresh_light_arc
+            - if:
+                condition:
+                  lambda: 'return id(light_on) && id(light_supports_rgb);'
+                then:
+                  - script.execute: send_light_turn_on
+            - lvgl.page.show:
+                id: page_light
+                animation: MOVE_RIGHT
+          else:
+            - lambda: |-
+                int kelvin = id(light_white_kelvin);
+                float temp = kelvin / 100.0f;
+                int r8, g8, b8;
+                if (temp <= 66.0f) {
+                  r8 = 255;
+                  g8 = (int)(99.4708025861f * logf(temp) - 161.1195681661f + 0.5f);
+                  b8 = temp <= 19.0f ? 0 : (int)(138.5177312231f * logf(temp - 10.0f) - 305.0447927307f + 0.5f);
+                } else {
+                  r8 = (int)(329.698727446f * powf(temp - 60.0f, -0.1332047592f) + 0.5f);
+                  g8 = (int)(288.1221695283f * powf(temp - 60.0f, -0.0755148492f) + 0.5f);
+                  b8 = 255;
+                }
+                id(light_color_r) = std::max(0, std::min(255, r8));
+                id(light_color_g) = std::max(0, std::min(255, g8));
+                id(light_color_b) = std::max(0, std::min(255, b8));
+            - globals.set: {id: in_colorpicker, value: 'false'}
+            - globals.set: {id: in_light, value: 'true'}
+            - script.execute: refresh_light_arc
+            - if:
+                condition:
+                  lambda: 'return id(light_on) && id(light_supports_color_temp);'
+                then:
+                  - script.execute: send_light_color_temp
+            - lvgl.page.show:
+                id: page_light
+                animation: MOVE_RIGHT
 
   - id: light_hue_up
     then:
@@ -415,40 +629,111 @@ script:
           id(light_color_h) = h;
       - script.execute: refresh_color_preview
 
+  - id: light_kelvin_up
+    then:
+      - lambda: |-
+          int min_k = id(light_white_kelvin_min);
+          int max_k = id(light_white_kelvin_max);
+          if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
+          if (max_k - min_k < 1) max_k = min_k + 1;
+          int step = (max_k - min_k + 119) / 120;
+          if (step < 1) step = 1;
+          int k = id(light_white_kelvin);
+          if (k >= max_k) {
+            id(light_white_kelvin) = min_k;
+          } else {
+            k += step;
+            if (k > max_k) k = max_k;
+            id(light_white_kelvin) = k;
+          }
+      - script.execute: refresh_color_preview
+
+  - id: light_kelvin_down
+    then:
+      - lambda: |-
+          int min_k = id(light_white_kelvin_min);
+          int max_k = id(light_white_kelvin_max);
+          if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
+          if (max_k - min_k < 1) max_k = min_k + 1;
+          int step = (max_k - min_k + 119) / 120;
+          if (step < 1) step = 1;
+          int k = id(light_white_kelvin);
+          if (k <= min_k) {
+            id(light_white_kelvin) = max_k;
+          } else {
+            k -= step;
+            if (k < min_k) k = min_k;
+            id(light_white_kelvin) = k;
+          }
+      - script.execute: refresh_color_preview
+
   - id: refresh_color_preview
     then:
       - lambda: |-
-          int h = id(light_color_h);
-          // Compute RGB from HSV(h, 100%, 100%) directly (accurate 8-bit)
-          int hi = (h / 60) % 6;
-          float f = h / 60.0f - (int)(h / 60.0f);
-          int q = (int)(255.0f * (1.0f - f));
-          int t = (int)(255.0f * f);
           int r8, g8, b8;
-          switch (hi) {
-            case 0: r8=255; g8=t;   b8=0;   break;
-            case 1: r8=q;   g8=255; b8=0;   break;
-            case 2: r8=0;   g8=255; b8=t;   break;
-            case 3: r8=0;   g8=q;   b8=255; break;
-            case 4: r8=t;   g8=0;   b8=255; break;
-            default: r8=255; g8=0;  b8=q;   break;
+          if (id(light_color_picker_mode) == 0) {
+            int h = id(light_color_h);
+            int hi = (h / 60) % 6;
+            float f = h / 60.0f - (int)(h / 60.0f);
+            int q = (int)(255.0f * (1.0f - f));
+            int t = (int)(255.0f * f);
+            switch (hi) {
+              case 0: r8=255; g8=t;   b8=0;   break;
+              case 1: r8=q;   g8=255; b8=0;   break;
+              case 2: r8=0;   g8=255; b8=t;   break;
+              case 3: r8=0;   g8=q;   b8=255; break;
+              case 4: r8=t;   g8=0;   b8=255; break;
+              default: r8=255; g8=0;  b8=q;   break;
+            }
+            static char hbuf[7];
+            snprintf(hbuf, sizeof(hbuf), "%02X%02X%02X", r8, g8, b8);
+            lv_label_set_text(id(lbl_hex_val), hbuf);
+            lv_label_set_text(id(lbl_cp_mode), "COLOR");
+          } else {
+            int kelvin = id(light_white_kelvin);
+            int min_k = id(light_white_kelvin_min);
+            int max_k = id(light_white_kelvin_max);
+            if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
+            if (max_k - min_k < 1) max_k = min_k + 1;
+            float temp = kelvin / 100.0f;
+            if (temp <= 66.0f) {
+              r8 = 255;
+              g8 = (int)(99.4708025861f * logf(temp) - 161.1195681661f + 0.5f);
+              b8 = temp <= 19.0f ? 0 : (int)(138.5177312231f * logf(temp - 10.0f) - 305.0447927307f + 0.5f);
+            } else {
+              r8 = (int)(329.698727446f * powf(temp - 60.0f, -0.1332047592f) + 0.5f);
+              g8 = (int)(288.1221695283f * powf(temp - 60.0f, -0.0755148492f) + 0.5f);
+              b8 = 255;
+            }
+            r8 = std::max(0, std::min(255, r8));
+            g8 = std::max(0, std::min(255, g8));
+            b8 = std::max(0, std::min(255, b8));
+            static char kbuf[8];
+            snprintf(kbuf, sizeof(kbuf), "%dK", kelvin);
+            lv_label_set_text(id(lbl_hex_val), kbuf);
+            lv_label_set_text(id(lbl_cp_mode), "WHITE");
           }
           lv_color_t col = lv_color_make(r8, g8, b8);
           lv_obj_set_style_bg_color(id(cw_color_circle), col, LV_STATE_DEFAULT);
-          lv_obj_set_style_arc_color(id(cp_arc), col,
-            LV_PART_INDICATOR);
-          static char hbuf[7];
-          snprintf(hbuf, sizeof(hbuf), "%02X%02X%02X", r8, g8, b8);
-          lv_label_set_text(id(lbl_hex_val), hbuf);
-          // Full 360° arc: rotation=270 puts start at 12 o'clock
-          // actual_angle = 270 + hue
-          float angle_rad = (270.0f + h) * 3.14159f / 180.0f;
-          int cp_radius = 99; // arc: x:12,y:12,w:216 -> outer=108, arc_width=18, mid=99
-          int kx = (int)(cp_radius * cosf(angle_rad));
-          int ky = (int)(cp_radius * sinf(angle_rad));
+          lv_obj_set_style_arc_color(id(cp_arc), col, LV_PART_INDICATOR);
+          const int luminance = (299 * r8 + 587 * g8 + 114 * b8) / 1000;
+          const lv_color_t text_col = luminance >= 150 ? lv_color_hex(0x000000) : lv_color_hex(0xFFFFFF);
+          lv_obj_set_style_text_color(id(lbl_hex_val), text_col, LV_STATE_DEFAULT);
+          lv_obj_set_style_text_color(id(lbl_cp_mode), text_col, LV_STATE_DEFAULT);
       - lvgl.arc.update:
           id: cp_arc
-          value: !lambda "return id(light_color_h);"
+          value: !lambda |-
+            if (id(light_color_picker_mode) == 0) {
+              return id(light_color_h);
+            }
+            int min_k = id(light_white_kelvin_min);
+            int max_k = id(light_white_kelvin_max);
+            if (min_k > max_k) { int tmp = min_k; min_k = max_k; max_k = tmp; }
+            if (max_k - min_k < 1) return 0;
+            int kelvin = id(light_white_kelvin);
+            if (kelvin < min_k) kelvin = min_k;
+            if (kelvin > max_k) kelvin = max_k;
+            return (kelvin - min_k) * 359 / (max_k - min_k);
 
   - id: light_brightness_up
     then:
@@ -498,7 +783,7 @@ script:
           lv_obj_set_style_border_color(id(btn_palette), tc, LV_STATE_DEFAULT);
           lv_obj_set_style_shadow_color(id(btn_palette), tc, LV_STATE_DEFAULT);
           lv_obj_set_style_text_color(id(lbl_light_title), tc, LV_STATE_DEFAULT);
-          if (id(light_supports_rgb)) lv_obj_clear_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
+          if (id(light_supports_rgb) || id(light_supports_color_temp)) lv_obj_clear_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
           else lv_obj_add_flag(id(btn_palette), LV_OBJ_FLAG_HIDDEN);
           if (id(light_supports_brightness)) {
             lv_obj_clear_flag(id(light_arc), LV_OBJ_FLAG_HIDDEN);
@@ -645,7 +930,11 @@ lvgl:
                   scrollbar_mode: "OFF"
                   scroll_dir: NONE
                   on_click:
-                    - script.execute: open_colorpicker
+                    - if:
+                        condition:
+                          lambda: 'return id(light_supports_rgb) || id(light_supports_color_temp);'
+                        then:
+                          - script.execute: open_colorpicker
                   widgets:
                     - image:
                         src: light_img_palette
@@ -749,6 +1038,13 @@ lvgl:
                   on_click:
                     - script.execute: confirm_light_color
                   widgets:
+                    - label:
+                        id: lbl_cp_mode
+                        align: TOP_MID
+                        y: 18
+                        text: "COLOR"
+                        text_font: font_cp_mode
+                        text_color: 0xAAAAAA
                     - label:
                         id: lbl_hex_val
                         align: CENTER
