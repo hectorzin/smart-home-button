@@ -25,6 +25,7 @@ struct CarouselSlotLayout {
   int y{0};
   int w{40};
   int opa_text{0};
+  int opa_title{0};
   int opa_bg{0};
   int opa_icon{96};
 };
@@ -32,6 +33,8 @@ struct CarouselSlotLayout {
 class DialCarousel : public Component {
  public:
   void set_slot(size_t index, lv_obj_t *container, lv_obj_t *icon, lv_obj_t *title);
+  void set_lateral_title_opa_max(int value) { this->lateral_title_opa_max_ = value; }
+  void set_titles_are_overlays(bool value) { this->titles_are_overlays_ = value; }
   void set_center_bar(lv_obj_t *bar) { this->center_bar_ = bar; }
   void set_center_sub(lv_obj_t *sub) { this->center_sub_ = sub; }
 
@@ -39,6 +42,7 @@ class DialCarousel : public Component {
 
   CarouselSlotLayout compute_static_layout(size_t slot_index, int pill_shift_max) const;
   void apply_container_geometry(size_t slot_index, const CarouselSlotLayout &layout) const;
+  void apply_title_layout(size_t slot_index, const CarouselSlotLayout &layout) const;
 
   void apply_animation_frame(int32_t progress, CarouselDirection direction, int pill_shift_max);
 
@@ -46,8 +50,11 @@ class DialCarousel : public Component {
 
  protected:
   CarouselSlotLayout compute_layout_(size_t slot_index, float off, int pill_shift_max) const;
+  int compute_lateral_title_opa_(int mix) const;
 
   std::array<CarouselSlotRefs, 5> slots_{};
+  int lateral_title_opa_max_{0};
+  bool titles_are_overlays_{false};
   lv_obj_t *center_bar_{nullptr};
   lv_obj_t *center_sub_{nullptr};
 

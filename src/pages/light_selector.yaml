@@ -8,22 +8,24 @@ globals:
 
 dial_carousel:
   - id: selector_carousel
+    lateral_title_opa_max: 120
+    titles_are_overlays: true
     slots:
       - container: ls_slot_far_up
         icon: ls_slot_far_up_img
-        title: ls_slot_far_up_lbl
+        title: ls_overlay_far_up_lbl
       - container: ls_slot_near_up
         icon: ls_slot_near_up_img
-        title: ls_slot_near_up_lbl
+        title: ls_overlay_near_up_lbl
       - container: ls_slot_center
         icon: ls_slot_center_img
         title: ls_slot_center_lbl
       - container: ls_slot_near_dn
         icon: ls_slot_near_dn_img
-        title: ls_slot_near_dn_lbl
+        title: ls_overlay_near_dn_lbl
       - container: ls_slot_far_dn
         icon: ls_slot_far_dn_img
-        title: ls_slot_far_dn_lbl
+        title: ls_overlay_far_dn_lbl
     center_bar: ls_slot_center_bar
     center_sub: ls_slot_center_sub
 
@@ -229,8 +231,7 @@ script:
                                    const esphome::dial_carousel::CarouselSlotLayout &layout) {
             const auto snap = id(dial_lights_id).card_snapshot_at(index);
             lv_label_set_text(lbl, snap.name.c_str());
-            lv_obj_set_style_text_color(lbl, lv_color_hex(0x232A38), LV_PART_MAIN);
-            lv_obj_set_style_opa(lbl, layout.opa_text > 0 ? layout.opa_text : 140, LV_PART_MAIN);
+            lv_obj_set_style_text_color(lbl, lv_color_hex(0x6B7FCC), LV_PART_MAIN);
             apply_icon_state(img, snap, layout, false);
             lv_obj_set_style_bg_color(slot, lv_color_hex(0x0D1537), LV_PART_MAIN);
             lv_obj_set_style_bg_opa(slot, layout.opa_bg, LV_PART_MAIN);
@@ -240,7 +241,6 @@ script:
           auto paint_empty_lateral = [&](lv_obj_t *slot, lv_obj_t *img, lv_obj_t *lbl,
                                            const esphome::dial_carousel::CarouselSlotLayout &layout) {
             lv_label_set_text(lbl, "");
-            lv_obj_set_style_opa(lbl, 0, LV_PART_MAIN);
             lv_obj_set_style_opa(img, 0, LV_PART_MAIN);
             lv_obj_set_style_img_recolor_opa(img, 0, LV_PART_MAIN);
             lv_obj_set_style_bg_color(slot, lv_color_hex(0x0D1537), LV_PART_MAIN);
@@ -306,8 +306,8 @@ script:
             id(ls_slot_near_dn_img), id(ls_slot_far_dn_img)
           };
           lv_obj_t *title_lbls[5] = {
-            id(ls_slot_far_up_lbl), id(ls_slot_near_up_lbl), id(ls_slot_center_lbl),
-            id(ls_slot_near_dn_lbl), id(ls_slot_far_dn_lbl)
+            id(ls_overlay_far_up_lbl), id(ls_overlay_near_up_lbl), id(ls_slot_center_lbl),
+            id(ls_overlay_near_dn_lbl), id(ls_overlay_far_dn_lbl)
           };
           lv_obj_t *dots[5] = {id(ls_dot_0), id(ls_dot_1), id(ls_dot_2), id(ls_dot_3), id(ls_dot_4)};
 
@@ -315,8 +315,8 @@ script:
             for (int slot = 0; slot < 5; slot++) {
               const auto layout = id(selector_carousel).compute_static_layout(slot, 54);
               id(selector_carousel).apply_container_geometry(slot, layout);
+              id(selector_carousel).apply_title_layout(slot, layout);
               lv_label_set_text(title_lbls[slot], "");
-              lv_obj_set_style_opa(title_lbls[slot], 0, LV_PART_MAIN);
               lv_obj_set_style_opa(icons[slot], 0, LV_PART_MAIN);
               lv_obj_set_style_img_recolor_opa(icons[slot], 0, LV_PART_MAIN);
               lv_obj_set_style_bg_opa(slots[slot], LV_OPA_TRANSP, LV_PART_MAIN);
@@ -346,6 +346,7 @@ script:
             } else {
               paint_empty_lateral(slots[slot], icons[slot], title_lbls[slot], layout);
             }
+            id(selector_carousel).apply_title_layout(slot, layout);
           }
 
           lv_obj_set_style_border_width(id(ls_slot_center), 0, LV_PART_MAIN);
@@ -482,6 +483,11 @@ lvgl:
       bg_opa: COVER
       scrollbar_mode: "OFF"
       on_load:
+        - lambda: |-
+            lv_obj_move_foreground(id(ls_overlay_far_up_lbl));
+            lv_obj_move_foreground(id(ls_overlay_near_up_lbl));
+            lv_obj_move_foreground(id(ls_overlay_near_dn_lbl));
+            lv_obj_move_foreground(id(ls_overlay_far_dn_lbl));
         - script.execute: refresh_light_selector
       widgets:
         - obj:
@@ -526,15 +532,6 @@ lvgl:
                               align: LEFT_MID
                               x: 2
                               src: menu_img_light
-                          - label:
-                              id: ls_slot_far_up_lbl
-                              align: LEFT_MID
-                              x: 38
-                              width: 130
-                              long_mode: DOT
-                              text_font: font_menu_item
-                              text_color: col_menu_dim
-                              text: ""
                     - obj:
                         id: ls_slot_near_up
                         align: TOP_MID
@@ -552,15 +549,6 @@ lvgl:
                               align: LEFT_MID
                               x: 2
                               src: menu_img_light
-                          - label:
-                              id: ls_slot_near_up_lbl
-                              align: LEFT_MID
-                              x: 38
-                              width: 130
-                              long_mode: DOT
-                              text_font: font_menu_item
-                              text_color: col_menu_dim
-                              text: ""
                     - obj:
                         id: ls_slot_center_bar
                         align: TOP_MID
@@ -629,15 +617,6 @@ lvgl:
                               align: LEFT_MID
                               x: 2
                               src: menu_img_light
-                          - label:
-                              id: ls_slot_near_dn_lbl
-                              align: LEFT_MID
-                              x: 38
-                              width: 130
-                              long_mode: DOT
-                              text_font: font_menu_item
-                              text_color: col_menu_dim
-                              text: ""
                     - obj:
                         id: ls_slot_far_dn
                         align: TOP_MID
@@ -655,15 +634,62 @@ lvgl:
                               align: LEFT_MID
                               x: 2
                               src: menu_img_light
-                          - label:
-                              id: ls_slot_far_dn_lbl
-                              align: LEFT_MID
-                              x: 38
-                              width: 130
-                              long_mode: DOT
-                              text_font: font_menu_item
-                              text_color: col_menu_dim
-                              text: ""
+              - label:
+                  id: ls_overlay_far_up_lbl
+                  align: TOP_LEFT
+                  x: 0
+                  y: 0
+                  width: 118
+                  height: 16
+                  text_align: LEFT
+                  text_font: font_menu_sub
+                  text_color: 0x6B7FCC
+                  long_mode: DOT
+                  bg_opa: TRANSP
+                  opa: TRANSP
+                  text: ""
+              - label:
+                  id: ls_overlay_near_up_lbl
+                  align: TOP_LEFT
+                  x: 0
+                  y: 0
+                  width: 118
+                  height: 16
+                  text_align: LEFT
+                  text_font: font_menu_sub
+                  text_color: 0x6B7FCC
+                  long_mode: DOT
+                  bg_opa: TRANSP
+                  opa: TRANSP
+                  text: ""
+              - label:
+                  id: ls_overlay_near_dn_lbl
+                  align: TOP_LEFT
+                  x: 0
+                  y: 0
+                  width: 118
+                  height: 16
+                  text_align: LEFT
+                  text_font: font_menu_sub
+                  text_color: 0x6B7FCC
+                  long_mode: DOT
+                  bg_opa: TRANSP
+                  opa: TRANSP
+                  text: ""
+              - label:
+                  id: ls_overlay_far_dn_lbl
+                  align: TOP_LEFT
+                  x: 0
+                  y: 0
+                  width: 118
+                  height: 16
+                  text_align: LEFT
+                  text_font: font_menu_sub
+                  text_color: 0x6B7FCC
+                  long_mode: DOT
+                  bg_opa: TRANSP
+                  opa: TRANSP
+                  text: ""
               - obj:
                   id: ls_dot_0
                   align: RIGHT_MID
