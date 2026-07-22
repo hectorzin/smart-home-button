@@ -642,7 +642,7 @@ lvgl:
                   width: 118
                   height: 16
                   text_align: LEFT
-                  text_font: font_menu_sub
+                  text_font: font_light_selector_near
                   text_color: 0x6B7FCC
                   long_mode: DOT
                   bg_opa: TRANSP
@@ -656,7 +656,7 @@ lvgl:
                   width: 118
                   height: 16
                   text_align: LEFT
-                  text_font: font_menu_sub
+                  text_font: font_light_selector_near
                   text_color: 0x6B7FCC
                   long_mode: DOT
                   bg_opa: TRANSP
@@ -670,7 +670,7 @@ lvgl:
                   width: 118
                   height: 16
                   text_align: LEFT
-                  text_font: font_menu_sub
+                  text_font: font_light_selector_near
                   text_color: 0x6B7FCC
                   long_mode: DOT
                   bg_opa: TRANSP
@@ -684,7 +684,7 @@ lvgl:
                   width: 118
                   height: 16
                   text_align: LEFT
-                  text_font: font_menu_sub
+                  text_font: font_light_selector_near
                   text_color: 0x6B7FCC
                   long_mode: DOT
                   bg_opa: TRANSP
