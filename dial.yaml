@@ -12,7 +12,7 @@ packages:
   timer_page:  !include src/pages/timer.yaml
 
 external_components:
-  - source: github://hectorzin/smart-home-button@8db912dc6fa8c5bdd6c5c5d29afbddd34af2ee5c
+  - source: github://hectorzin/smart-home-button@848a7df8a8bc663110a7c63e440913ea30b0b7f0
     components: [dial_lights, dial_carousel]
     refresh: 0s
 
