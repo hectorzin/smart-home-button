@@ -16,6 +16,7 @@ CONF_TITLE = "title"
 CONF_CENTER_BAR = "center_bar"
 CONF_CENTER_SUB = "center_sub"
 CONF_LATERAL_TITLE_OPA_MAX = "lateral_title_opa_max"
+CONF_TITLES_ARE_OVERLAYS = "titles_are_overlays"
 
 SLOT_SCHEMA = cv.Schema(
     {
@@ -40,6 +41,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_LATERAL_TITLE_OPA_MAX, default=0): cv.int_range(
             min=0, max=255
         ),
+        cv.Optional(CONF_TITLES_ARE_OVERLAYS, default=False): cv.boolean,
     }
 )
 
@@ -59,3 +61,4 @@ async def to_code(config):
     cg.add(var.set_center_bar(center_bar))
     cg.add(var.set_center_sub(center_sub))
     cg.add(var.set_lateral_title_opa_max(config[CONF_LATERAL_TITLE_OPA_MAX]))
+    cg.add(var.set_titles_are_overlays(config[CONF_TITLES_ARE_OVERLAYS]))

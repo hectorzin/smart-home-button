@@ -112,6 +112,21 @@ void DialCarousel::apply_container_geometry(size_t slot_index, const CarouselSlo
   }
 }
 
+void DialCarousel::apply_title_layout(size_t slot_index, const CarouselSlotLayout &layout) const {
+  const auto &refs = this->slots_[slot_index];
+  if (refs.title == nullptr)
+    return;
+
+  if (this->titles_are_overlays_ && slot_index != 2) {
+    const int slot_h = 40;
+    lv_font_t *font = lv_obj_get_style_text_font(refs.title, LV_PART_MAIN);
+    const int line_h = font != nullptr ? lv_font_get_line_height(font) : 12;
+    lv_obj_set_pos(refs.title, layout.x + 38, layout.y + (slot_h - line_h) / 2);
+  }
+
+  lv_obj_set_style_opa(refs.title, layout.opa_title, LV_PART_MAIN);
+}
+
 void DialCarousel::apply_animation_frame(int32_t progress, CarouselDirection direction, int pill_shift_max) {
   const float phase = static_cast<float>(progress) / 100.0f;
   int center_sub_opa = 0;
@@ -140,9 +155,7 @@ void DialCarousel::apply_animation_frame(int32_t progress, CarouselDirection dir
     if (refs.icon != nullptr) {
       lv_obj_set_style_opa(refs.icon, layout.opa_icon, LV_PART_MAIN);
     }
-    if (refs.title != nullptr) {
-      lv_obj_set_style_opa(refs.title, layout.opa_title, LV_PART_MAIN);
-    }
+    this->apply_title_layout(slot_index, layout);
 
     if (slot_index == 2) {
       center_sub_opa = layout.opa_text;
