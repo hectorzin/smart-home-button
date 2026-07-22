@@ -15,7 +15,7 @@ font:
     id: font_menu_sub
     size: 12
     bpp: 4
-    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .-_%/"
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzáí0123456789 .-_%/"
 
 color:
   - id: col_menu_bg

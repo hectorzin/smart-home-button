@@ -68,9 +68,27 @@ CarouselSlotLayout DialCarousel::compute_layout_(size_t slot_index, float off, i
   layout.opa_text = opa_text;
   layout.opa_bg = opa_bg;
   layout.opa_icon = lv_map(mix, 0, 1000, 96, 255);
+  if (slot_index == 2) {
+    layout.opa_title = opa_text;
+  } else if (this->lateral_title_opa_max_ > 0) {
+    layout.opa_title = this->compute_lateral_title_opa_(mix);
+  } else {
+    layout.opa_title = opa_text;
+  }
   layout.x = static_cast<int>(x - 14.0f - 120.0f + static_cast<float>(pill_shift));
   layout.y = static_cast<int>(y - (slot_index == 2 ? 28.0f : 20.0f));
   return layout;
+}
+
+int DialCarousel::compute_lateral_title_opa_(int mix) const {
+  if (this->lateral_title_opa_max_ <= 0 || mix <= 0)
+    return 0;
+  if (mix >= 1000)
+    return 255;
+  if (mix <= 500) {
+    return lv_map(mix, 0, 500, 0, this->lateral_title_opa_max_);
+  }
+  return lv_map(mix, 500, 1000, this->lateral_title_opa_max_, 255);
 }
 
 CarouselSlotLayout DialCarousel::compute_static_layout(size_t slot_index, int pill_shift_max) const {
@@ -123,7 +141,7 @@ void DialCarousel::apply_animation_frame(int32_t progress, CarouselDirection dir
       lv_obj_set_style_opa(refs.icon, layout.opa_icon, LV_PART_MAIN);
     }
     if (refs.title != nullptr) {
-      lv_obj_set_style_opa(refs.title, layout.opa_text, LV_PART_MAIN);
+      lv_obj_set_style_opa(refs.title, layout.opa_title, LV_PART_MAIN);
     }
 
     if (slot_index == 2) {

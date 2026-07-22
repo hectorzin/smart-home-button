@@ -15,6 +15,7 @@ CONF_ICON = "icon"
 CONF_TITLE = "title"
 CONF_CENTER_BAR = "center_bar"
 CONF_CENTER_SUB = "center_sub"
+CONF_LATERAL_TITLE_OPA_MAX = "lateral_title_opa_max"
 
 SLOT_SCHEMA = cv.Schema(
     {
@@ -36,6 +37,9 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_SLOTS): cv.All(cv.ensure_list(SLOT_SCHEMA), cv.Length(min=5, max=5)),
         cv.Required(CONF_CENTER_BAR): cv.use_id(lv_obj_t),
         cv.Required(CONF_CENTER_SUB): cv.use_id(lv_obj_t),
+        cv.Optional(CONF_LATERAL_TITLE_OPA_MAX, default=0): cv.int_range(
+            min=0, max=255
+        ),
     }
 )
 
@@ -54,3 +58,4 @@ async def to_code(config):
     center_sub = await cg.get_variable(config[CONF_CENTER_SUB])
     cg.add(var.set_center_bar(center_bar))
     cg.add(var.set_center_sub(center_sub))
+    cg.add(var.set_lateral_title_opa_max(config[CONF_LATERAL_TITLE_OPA_MAX]))

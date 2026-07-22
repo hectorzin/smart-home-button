@@ -8,6 +8,7 @@ globals:
 
 dial_carousel:
   - id: selector_carousel
+    lateral_title_opa_max: 120
     slots:
       - container: ls_slot_far_up
         icon: ls_slot_far_up_img
@@ -229,8 +230,8 @@ script:
                                    const esphome::dial_carousel::CarouselSlotLayout &layout) {
             const auto snap = id(dial_lights_id).card_snapshot_at(index);
             lv_label_set_text(lbl, snap.name.c_str());
-            lv_obj_set_style_text_color(lbl, lv_color_hex(0x232A38), LV_PART_MAIN);
-            lv_obj_set_style_opa(lbl, layout.opa_text > 0 ? layout.opa_text : 140, LV_PART_MAIN);
+            lv_obj_set_style_text_color(lbl, lv_color_hex(0x6B7FCC), LV_PART_MAIN);
+            lv_obj_set_style_opa(lbl, layout.opa_title, LV_PART_MAIN);
             apply_icon_state(img, snap, layout, false);
             lv_obj_set_style_bg_color(slot, lv_color_hex(0x0D1537), LV_PART_MAIN);
             lv_obj_set_style_bg_opa(slot, layout.opa_bg, LV_PART_MAIN);
@@ -296,6 +297,12 @@ script:
           const size_t count = id(dial_lights_id).light_count();
           const size_t active = id(dial_lights_id).active_index();
           const int OFFSETS[5] = {-2, -1, 0, 1, 2};
+
+          lv_obj_add_flag(id(ls_stack), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+          lv_obj_add_flag(id(ls_slot_far_up), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+          lv_obj_add_flag(id(ls_slot_near_up), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+          lv_obj_add_flag(id(ls_slot_near_dn), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+          lv_obj_add_flag(id(ls_slot_far_dn), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
 
           lv_obj_t *slots[5] = {
             id(ls_slot_far_up), id(ls_slot_near_up), id(ls_slot_center),
@@ -482,6 +489,12 @@ lvgl:
       bg_opa: COVER
       scrollbar_mode: "OFF"
       on_load:
+        - lambda: |-
+            lv_obj_add_flag(id(ls_stack), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+            lv_obj_add_flag(id(ls_slot_far_up), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+            lv_obj_add_flag(id(ls_slot_near_up), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+            lv_obj_add_flag(id(ls_slot_near_dn), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+            lv_obj_add_flag(id(ls_slot_far_dn), LV_OBJ_FLAG_OVERFLOW_VISIBLE);
         - script.execute: refresh_light_selector
       widgets:
         - obj:
@@ -530,9 +543,9 @@ lvgl:
                               id: ls_slot_far_up_lbl
                               align: LEFT_MID
                               x: 38
-                              width: 130
+                              width: 118
                               long_mode: DOT
-                              text_font: font_menu_item
+                              text_font: font_menu_sub
                               text_color: col_menu_dim
                               text: ""
                     - obj:
@@ -556,9 +569,9 @@ lvgl:
                               id: ls_slot_near_up_lbl
                               align: LEFT_MID
                               x: 38
-                              width: 130
+                              width: 118
                               long_mode: DOT
-                              text_font: font_menu_item
+                              text_font: font_menu_sub
                               text_color: col_menu_dim
                               text: ""
                     - obj:
@@ -633,9 +646,9 @@ lvgl:
                               id: ls_slot_near_dn_lbl
                               align: LEFT_MID
                               x: 38
-                              width: 130
+                              width: 118
                               long_mode: DOT
-                              text_font: font_menu_item
+                              text_font: font_menu_sub
                               text_color: col_menu_dim
                               text: ""
                     - obj:
@@ -659,9 +672,9 @@ lvgl:
                               id: ls_slot_far_dn_lbl
                               align: LEFT_MID
                               x: 38
-                              width: 130
+                              width: 118
                               long_mode: DOT
-                              text_font: font_menu_item
+                              text_font: font_menu_sub
                               text_color: col_menu_dim
                               text: ""
               - obj:
