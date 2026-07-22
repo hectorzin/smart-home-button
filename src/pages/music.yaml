@@ -8,8 +8,11 @@ substitutions:
   icon_volume: "\uF005"
 
 external_components:
-  - source: ./components
-    components: [generic_image, media_source, sendspin]
+  - source: github://hectorzin/smart-home-button@c0d6a0bd8401486ca1fa7ad3ae3bfbcaff036b94
+    components:
+      - generic_image
+      - media_source
+      - sendspin
     refresh: 0s
   
 
@@ -548,6 +551,15 @@ lvgl:
                         align: CENTER
 
 interval:
+  - interval: 20s
+    then:
+      - lambda: |-
+          static bool logged = false;
+          if (!logged) {
+            logged = true;
+            ESP_LOGI("firmware_diag", "MUSIC_YAML_DIAG_C0D6A0B ACTIVE");
+          }
+
   - interval: 200ms
     then:
       - lambda: |-
