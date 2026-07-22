@@ -17,6 +17,12 @@ font:
     bpp: 4
     glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzáí0123456789 .-_%/"
 
+  - file: "gfonts://DM+Sans"
+    id: font_light_selector_near
+    size: 16
+    bpp: 4
+    glyphs: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzáí0123456789 .-_%/"
+
 color:
   - id: col_menu_bg
     hex: "000000"
