@@ -121,7 +121,10 @@ void DialCarousel::apply_title_layout(size_t slot_index, const CarouselSlotLayou
     const int slot_h = 40;
     const lv_font_t *font = lv_obj_get_style_text_font(refs.title, LV_PART_MAIN);
     const int line_h = font != nullptr ? lv_font_get_line_height(font) : 12;
-    lv_obj_set_pos(refs.title, layout.x + 38, layout.y + (slot_h - line_h) / 2);
+    const int16_t parent_width = lv_obj_get_width(lv_obj_get_parent(refs.title));
+    const int16_t title_x = ((parent_width - layout.w) / 2) + layout.x + 38;
+    const int16_t title_y = layout.y + (slot_h - line_h) / 2;
+    lv_obj_set_pos(refs.title, title_x, title_y);
   }
 
   lv_obj_set_style_opa(refs.title, layout.opa_title, LV_PART_MAIN);
