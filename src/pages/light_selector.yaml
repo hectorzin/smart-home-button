@@ -319,8 +319,8 @@ script:
           }
           lv_label_set_text(id(ls_debug_near_up_lbl), debug_up_name.c_str());
           lv_label_set_text(id(ls_debug_near_dn_lbl), debug_down_name.c_str());
-          lv_obj_set_style_opa(id(ls_debug_near_up_lbl), 255, LV_PART_MAIN);
-          lv_obj_set_style_opa(id(ls_debug_near_dn_lbl), 255, LV_PART_MAIN);
+          lv_obj_set_style_opa(id(ls_debug_near_up_lbl), LV_OPA_COVER, LV_PART_MAIN);
+          lv_obj_set_style_opa(id(ls_debug_near_dn_lbl), LV_OPA_COVER, LV_PART_MAIN);
           lv_obj_clear_flag(id(ls_debug_near_up_lbl), LV_OBJ_FLAG_HIDDEN);
           lv_obj_clear_flag(id(ls_debug_near_dn_lbl), LV_OBJ_FLAG_HIDDEN);
           lv_obj_move_foreground(id(ls_debug_near_up_lbl));
@@ -720,8 +720,8 @@ lvgl:
                   text_font: font_menu_sub
                   text_color: 0xFF00FF
                   bg_color: 0xFFFFFF
-                  bg_opa: 80
-                  opa: 255
+                  bg_opa: 31%
+                  opa: 100%
                   text: "DEBUG ARRIBA"
               - label:
                   id: ls_debug_near_dn_lbl
@@ -732,8 +732,8 @@ lvgl:
                   text_font: font_menu_sub
                   text_color: 0x00FFFF
                   bg_color: 0xFFFFFF
-                  bg_opa: 80
-                  opa: 255
+                  bg_opa: 31%
+                  opa: 100%
                   text: "DEBUG ABAJO"
               - obj:
                   id: ls_dot_0
