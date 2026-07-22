@@ -67,6 +67,18 @@ void SendspinHub::setup() {
 
   ESP_LOGI(TAG, "Setup complete: ws_server=%s started=%s", this->ws_server_ != nullptr ? "present" : "null",
            this->ws_server_ != nullptr && this->ws_server_->is_started() ? "true" : "false");
+
+  this->set_timeout("sendspin_diag_15s", 15000, [this]() {
+    ESP_LOGI("firmware_diag",
+             "SENDSPIN_DIAG_BUILD_2BA446F ACTIVE network=%s server=%s started=%s port=8928",
+             network::is_connected() ? "true" : "false", this->ws_server_ != nullptr ? "present" : "missing",
+             this->ws_server_ != nullptr && this->ws_server_->is_started() ? "true" : "false");
+  });
+  this->set_timeout("sendspin_diag_30s", 30000, [this]() {
+    ESP_LOGI("firmware_diag", "SENDSPIN_DIAG_30S network=%s server=%s started=%s port=8928",
+             network::is_connected() ? "true" : "false", this->ws_server_ != nullptr ? "present" : "missing",
+             this->ws_server_ != nullptr && this->ws_server_->is_started() ? "true" : "false");
+  });
 }
 
 void SendspinHub::loop() {
